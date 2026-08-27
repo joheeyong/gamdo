@@ -1,0 +1,5 @@
+package com.gamdo.gamdo
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()

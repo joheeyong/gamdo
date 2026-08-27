@@ -1,0 +1,89 @@
+name: gamdo
+description: "사진 감각 코칭 앱 - AI 기반 사진 분석"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State Management
+  flutter_riverpod: any
+  riverpod_annotation: any
+
+  # Routing
+  go_router: any
+
+  # Network
+  dio: any
+
+  # Local Database
+  drift: any
+  sqlite3_flutter_libs: any
+
+  # Models
+  freezed_annotation: any
+  json_annotation: any
+
+  # Image
+  image_picker: any
+  flutter_image_compress: any
+
+  # Charts
+  fl_chart: any
+
+  # UI
+  smooth_page_indicator: any
+  shimmer: any
+
+  # Utils
+  path_provider: any
+  shared_preferences: any
+  intl: any
+  uuid: any
+  path: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: any
+  build_runner: any
+  freezed: any
+  json_serializable: any
+  riverpod_generator: any
+  drift_dev: any
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/images/
+
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Thin.otf
+          weight: 100
+        - asset: assets/fonts/Pretendard-ExtraLight.otf
+          weight: 200
+        - asset: assets/fonts/Pretendard-Light.otf
+          weight: 300
+        - asset: assets/fonts/Pretendard-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Pretendard-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Pretendard-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.otf
+          weight: 700
+        - asset: assets/fonts/Pretendard-ExtraBold.otf
+          weight: 800
+        - asset: assets/fonts/Pretendard-Black.otf
+          weight: 900
