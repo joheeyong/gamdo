@@ -43,6 +43,13 @@ dependencies:
   smooth_page_indicator: any
   shimmer: any
 
+  # Auth
+  flutter_web_auth_2: any
+
+  # Firebase
+  firebase_core: any
+  firebase_database: any
+
   # Utils
   path_provider: any
   shared_preferences: any

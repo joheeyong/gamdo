@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "792581850707",
+    "project_id": "gamdo-app-2026",
+    "storage_bucket": "gamdo-app-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:792581850707:android:baa3c83c3471ff9ef3e8a6",
+        "android_client_info": {
+          "package_name": "com.gamdo.gamdo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_SR7Q_XoDHqDDvLX2wBBrbzH2RFuY6yU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
