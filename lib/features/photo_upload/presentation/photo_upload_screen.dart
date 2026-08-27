@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/services/image_service.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../analysis/presentation/analysis_provider.dart';
 
 class PhotoUploadScreen extends ConsumerStatefulWidget {
@@ -23,17 +24,13 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   Future<void> _pickFromGallery() async {
     final imageService = ref.read(imageServiceProvider);
     final file = await imageService.pickFromGallery();
-    if (file != null && mounted) {
-      setState(() => _selectedImage = file);
-    }
+    if (file != null && mounted) setState(() => _selectedImage = file);
   }
 
   Future<void> _pickFromCamera() async {
     final imageService = ref.read(imageServiceProvider);
     final file = await imageService.pickFromCamera();
-    if (file != null && mounted) {
-      setState(() => _selectedImage = file);
-    }
+    if (file != null && mounted) setState(() => _selectedImage = file);
   }
 
   Future<void> _startAnalysis() async {
@@ -41,201 +38,142 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      final analysisNotifier = ref.read(analysisProvider.notifier);
-      await analysisNotifier.analyze(_selectedImage!);
-
+      final notifier = ref.read(analysisProvider.notifier);
+      await notifier.transformPhoto(_selectedImage!);
       if (!mounted) return;
+
       final result = ref.read(analysisProvider);
       result.when(
         data: (data) {
           if (data != null) {
-            context.go(
-              AppRoutes.analysisResult,
-              extra: {
-                'analysisJson': data.analysisJson,
-                'imagePath': data.imagePath,
-                'analysisId': data.id,
-              },
-            );
+            context.go(AppRoutes.analysisResult, extra: {
+              'analysisJson': data.analysisJson,
+              'imagePath': data.imagePath,
+              'analysisId': data.id,
+            });
           }
         },
         loading: () {},
-        error: (e, _) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.errorAnalysisFailed)),
-          );
-        },
+        error: (e, _) => _showError(),
       );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.errorAnalysisFailed)),
-        );
-      }
+    } catch (_) {
+      _showError();
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
   }
 
+  void _showError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('분석에 실패했습니다. 다시 시도해 주세요.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final analysisState = ref.watch(analysisProvider);
-    final isLoading = analysisState is AsyncLoading || _isProcessing;
+    final isLoading = ref.watch(analysisProvider) is AsyncLoading || _isProcessing;
 
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text(context.l10n.selectPhoto),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: const Text('새 분석', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => context.pop(),
         ),
+        actions: [
+          if (_selectedImage != null && !isLoading)
+            GestureDetector(
+              onTap: _startAnalysis,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: ShaderMask(
+                  shaderCallback: (bounds) => AppColors.instagramGradient.createShader(bounds),
+                  child: const Text(
+                    '분석',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              // Image Preview Area
-              Expanded(
-                child: _selectedImage != null
-                    ? _ImagePreview(image: _selectedImage!)
-                    : _ImagePickerArea(
-                        onGallery: _pickFromGallery,
-                        onCamera: _pickFromCamera,
-                      ),
-              ),
-              const SizedBox(height: 16),
-
-              // Source buttons when image is selected
-              if (_selectedImage != null && !isLoading) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _pickFromGallery,
-                        icon: const Icon(Icons.photo_library_outlined),
-                        label: Text(context.l10n.fromGallery),
+        child: Column(
+          children: [
+            // Image Preview (Instagram crop style)
+            Expanded(
+              child: _selectedImage != null
+                  ? Image.file(_selectedImage!, fit: BoxFit.contain, width: double.infinity)
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.photo_library_outlined, size: 64, color: Colors.white38),
+                          const SizedBox(height: 16),
+                          Text(
+                            '사진을 선택하세요',
+                            style: TextStyle(color: Colors.white60, fontSize: 16),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _pickFromCamera,
-                        icon: const Icon(Icons.camera_alt_outlined),
-                        label: Text(context.l10n.fromCamera),
+            ),
+
+            // Loading overlay
+            if (isLoading)
+              Container(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ShaderMask(
+                      shaderCallback: (bounds) => AppColors.instagramGradient.createShader(bounds),
+                      child: const Text(
+                        'AI가 사진을 분석하고 있습니다...',
+                        style: TextStyle(color: Colors.white, fontSize: 14),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-              ],
+              ),
 
-              // Analysis button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _selectedImage != null && !isLoading
-                      ? _startAnalysis
-                      : null,
-                  child: isLoading
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(context.l10n.analyzing),
-                          ],
-                        )
-                      : Text(context.l10n.startAnalysis),
+            // Bottom picker bar
+            if (!isLoading)
+              Container(
+                color: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _PickerBtn(
+                      icon: Icons.photo_library_outlined,
+                      label: '갤러리',
+                      onTap: _pickFromGallery,
+                    ),
+                    _PickerBtn(
+                      icon: Icons.camera_alt_outlined,
+                      label: '카메라',
+                      onTap: _pickFromCamera,
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ImagePreview extends StatelessWidget {
-  final File image;
-
-  const _ImagePreview({required this.image});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Image.file(
-          image,
-          fit: BoxFit.contain,
-          width: double.infinity,
-        ),
-      ),
-    );
-  }
-}
-
-class _ImagePickerArea extends StatelessWidget {
-  final VoidCallback onGallery;
-  final VoidCallback onCamera;
-
-  const _ImagePickerArea({
-    required this.onGallery,
-    required this.onCamera,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-          width: 2,
-          strokeAlign: BorderSide.strokeAlignInside,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.add_photo_alternate_outlined,
-              size: 64,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _PickerButton(
-                  icon: Icons.photo_library_outlined,
-                  label: '갤러리',
-                  onTap: onGallery,
-                ),
-                const SizedBox(width: 24),
-                _PickerButton(
-                  icon: Icons.camera_alt_outlined,
-                  label: '카메라',
-                  onTap: onCamera,
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -243,46 +181,32 @@ class _ImagePickerArea extends StatelessWidget {
   }
 }
 
-class _PickerButton extends StatelessWidget {
+class _PickerBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
-  const _PickerButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _PickerBtn({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                icon,
-                color: Theme.of(context).colorScheme.primary,
-                size: 28,
-              ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white24, width: 1),
             ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
+            child: Icon(icon, color: Colors.white, size: 26),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        ],
       ),
     );
   }

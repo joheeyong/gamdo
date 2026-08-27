@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/extensions/context_extensions.dart';
-import '../../../core/providers/theme_provider.dart' as tp;
+import '../../../core/providers/theme_provider.dart';
 import '../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -10,7 +10,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDarkMode = ref.watch(tp.themeModeProvider).value ?? false;
+    final isDarkMode = ref.watch(themeModeProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -28,7 +28,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               value: isDarkMode,
               onChanged: (_) {
-                ref.read(tp.themeModeProvider.notifier).toggle();
+                ref.read(themeModeProvider.notifier).toggle();
               },
             ),
           ),

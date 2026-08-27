@@ -1,9 +1,7 @@
 class ApiConstants {
   ApiConstants._();
 
-  static const String defaultProxyUrl = 'https://gamdo-proxy.your-worker.workers.dev';
-  static const String analysisEndpoint = '/api/analyze';
-  static const String claudeModel = 'claude-sonnet-4-20250514';
+  static const String defaultProxyUrl = 'http://192.168.0.46:8000'; // 로컬 개발 서버
   static const int maxImageSize = 1568;
   static const int fallbackImageSize = 800;
   static const int jpegQuality = 85;

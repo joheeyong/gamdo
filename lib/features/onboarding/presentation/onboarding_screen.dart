@@ -18,24 +18,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<_OnboardingPage> _pages = const [
-    _OnboardingPage(
-      icon: Icons.camera_alt_outlined,
-      title: '사진의 감각을 읽다',
-      description: 'AI가 사진의 색감, 구도, 분위기를 분석하여\n당신만의 사진 감각을 발견해 드립니다.',
-      gradient: [AppColors.primary, AppColors.primaryLight],
+  final _pages = const [
+    _OnboardingData(
+      icon: Icons.auto_awesome,
+      title: '사진, 감각으로 읽다',
+      description: 'AI가 당신의 사진 속 색감, 구도, 분위기를\n분석하여 숨겨진 감각을 발견합니다.',
     ),
-    _OnboardingPage(
-      icon: Icons.auto_awesome_outlined,
-      title: '맞춤 코칭 가이드',
-      description: '촬영 팁과 보정 가이드로\n사진 실력을 한 단계 업그레이드하세요.',
-      gradient: [AppColors.accent, AppColors.accentLight],
+    _OnboardingData(
+      icon: Icons.palette_outlined,
+      title: '나만의 톤앤매너',
+      description: '게시글과 피드를 분석해\n당신만의 사진 스타일을 프로파일링합니다.',
     ),
-    _OnboardingPage(
-      icon: Icons.insights_outlined,
-      title: '나만의 스타일 기록',
-      description: '분석 히스토리를 통해\n사진 스타일의 변화를 추적하세요.',
-      gradient: [AppColors.success, Color(0xFF6EE7B7)],
+    _OnboardingData(
+      icon: Icons.trending_up,
+      title: '성장하는 감각',
+      description: '맞춤 보정 가이드와 촬영 팁으로\n사진 감각을 한 단계 끌어올리세요.',
     ),
   ];
 
@@ -64,31 +61,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
+
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            // Skip button
             Align(
               alignment: Alignment.topRight,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: TextButton(
-                  onPressed: _completeOnboarding,
+                child: GestureDetector(
+                  onTap: _completeOnboarding,
                   child: Text(
-                    context.l10n.skip,
+                    '건너뛰기',
                     style: TextStyle(
-                      color: context.colorScheme.onSurface.withValues(alpha: 0.6),
+                      color: AppColors.textSecondaryLight,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),
               ),
             ),
-            // Page view
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                onPageChanged: (index) => setState(() => _currentPage = index),
+                onPageChanged: (i) => setState(() => _currentPage = i),
                 itemCount: _pages.length,
                 itemBuilder: (context, index) {
                   final page = _pages[index];
@@ -97,32 +96,44 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        // Gradient icon ring (Instagram story style)
                         Container(
                           width: 120,
                           height: 120,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: page.gradient,
-                            ),
-                            borderRadius: BorderRadius.circular(30),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: AppColors.storyGradient,
                           ),
-                          child: Icon(
-                            page.icon,
-                            size: 56,
-                            color: Colors.white,
+                          padding: const EdgeInsets.all(3),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isDark ? AppColors.backgroundDark : AppColors.surfaceLight,
+                            ),
+                            child: Icon(
+                              page.icon,
+                              size: 48,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 48),
+                        const SizedBox(height: 40),
                         Text(
                           page.title,
-                          style: context.textTheme.displaySmall,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.5,
+                          ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         Text(
                           page.description,
-                          style: context.textTheme.bodyLarge?.copyWith(
-                            color: context.colorScheme.onSurface.withValues(alpha: 0.7),
+                          style: TextStyle(
+                            fontSize: 15,
+                            height: 1.6,
+                            color: AppColors.textSecondaryLight,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -132,30 +143,46 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 },
               ),
             ),
-            // Indicator + Button
             Padding(
-              padding: const EdgeInsets.all(32),
+              padding: const EdgeInsets.fromLTRB(32, 0, 32, 48),
               child: Column(
                 children: [
                   SmoothPageIndicator(
                     controller: _pageController,
                     count: _pages.length,
-                    effect: WormEffect(
-                      dotHeight: 8,
-                      dotWidth: 8,
-                      activeDotColor: context.colorScheme.primary,
-                      dotColor: context.colorScheme.onSurface.withValues(alpha: 0.2),
+                    effect: const ExpandingDotsEffect(
+                      dotHeight: 6,
+                      dotWidth: 6,
+                      expansionFactor: 4,
+                      activeDotColor: AppColors.primary,
+                      dotColor: AppColors.dividerLight,
+                      spacing: 6,
                     ),
                   ),
                   const SizedBox(height: 32),
+                  // Instagram-style gradient button
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _onNext,
-                      child: Text(
-                        _currentPage == _pages.length - 1
-                            ? context.l10n.getStarted
-                            : context.l10n.next,
+                    height: 48,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: AppColors.instagramGradient,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ElevatedButton(
+                        onPressed: _onNext,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                        ),
+                        child: Text(
+                          _currentPage == _pages.length - 1 ? '시작하기' : '다음',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -169,16 +196,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-class _OnboardingPage {
+class _OnboardingData {
   final IconData icon;
   final String title;
   final String description;
-  final List<Color> gradient;
 
-  const _OnboardingPage({
+  const _OnboardingData({
     required this.icon,
     required this.title,
     required this.description,
-    required this.gradient,
   });
 }

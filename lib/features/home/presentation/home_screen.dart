@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/score_indicator.dart';
 import '../providers/home_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -19,236 +18,270 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: context.colorScheme.primary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Text(
-                  '감',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    fontFamily: 'Pretendard',
-                  ),
-                ),
-              ),
+        title: ShaderMask(
+          shaderCallback: (bounds) => AppColors.instagramGradient.createShader(bounds),
+          child: const Text(
+            '감도',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: 2,
             ),
-            const SizedBox(width: 8),
-            Text(
-              context.l10n.appTitle,
-              style: context.textTheme.headlineSmall,
-            ),
-          ],
+          ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline, size: 28),
+            onPressed: () => context.push(AppRoutes.photoUpload),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: analysesAsync.when(
         data: (analyses) {
-          if (analyses.isEmpty) {
-            return _EmptyState(context: context);
-          }
-          return _AnalysisList(analyses: analyses);
+          if (analyses.isEmpty) return _EmptyFeed();
+          return _AnalysisFeed(analyses: analyses);
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(AppRoutes.photoUpload),
-        icon: const Icon(Icons.camera_alt),
-        label: Text(context.l10n.analyze),
+        loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
+        error: (e, st) {
+          print('[Home] DB error: $e\n$st');
+          return Center(child: Text('오류: $e'));
+        },
       ),
     );
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final BuildContext context;
-
-  const _EmptyState({required this.context});
-
+class _EmptyFeed extends StatelessWidget {
   @override
-  Widget build(BuildContext innerContext) {
-    final ctx = context;
+  Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.photo_camera_outlined,
-              size: 80,
-              color: ctx.colorScheme.onSurface.withValues(alpha: 0.3),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Instagram story-style ring
+          Container(
+            width: 96,
+            height: 96,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppColors.storyGradient,
             ),
-            const SizedBox(height: 24),
-            Text(
-              ctx.l10n.noAnalysisYet,
-              style: ctx.textTheme.headlineSmall?.copyWith(
-                color: ctx.colorScheme.onSurface.withValues(alpha: 0.6),
+            padding: const EdgeInsets.all(3),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Theme.of(context).scaffoldBackgroundColor,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              ctx.l10n.startFirstAnalysis,
-              style: ctx.textTheme.bodyMedium?.copyWith(
-                color: ctx.colorScheme.onSurface.withValues(alpha: 0.4),
+              child: Icon(
+                Icons.camera_alt_outlined,
+                size: 36,
+                color: AppColors.textSecondaryLight,
               ),
-              textAlign: TextAlign.center,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            '아직 분석한 사진이 없습니다',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '사진을 업로드하고 AI 감각 코칭을 받아보세요',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondaryLight,
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: 200,
+            height: 44,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: AppColors.instagramGradient,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ElevatedButton(
+                onPressed: () => context.push(AppRoutes.photoUpload),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                ),
+                child: const Text(
+                  '첫 사진 분석하기',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _AnalysisList extends StatelessWidget {
+class _AnalysisFeed extends StatelessWidget {
   final List<dynamic> analyses;
-
-  const _AnalysisList({required this.analyses});
+  const _AnalysisFeed({required this.analyses});
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
       itemCount: analyses.length,
       itemBuilder: (context, index) {
         final record = analyses[index];
-        return _AnalysisCard(record: record);
+        return _FeedCard(record: record);
       },
     );
   }
 }
 
-class _AnalysisCard extends StatelessWidget {
+/// Instagram feed-style card
+class _FeedCard extends StatelessWidget {
   final dynamic record;
-
-  const _AnalysisCard({required this.record});
+  const _FeedCard({required this.record});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          context.push(
-            AppRoutes.analysisResult,
-            extra: {
-              'analysisId': record.id,
-              'analysisJson': record.analysisJson,
-              'imagePath': record.imagePath,
-            },
-          );
+    return GestureDetector(
+      onTap: () => context.push(
+        AppRoutes.analysisResult,
+        extra: {
+          'analysisId': record.id,
+          'analysisJson': record.analysisJson,
+          'imagePath': record.imagePath,
         },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Thumbnail
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 72,
-                  height: 72,
-                  child: _buildThumbnail(record.imagePath),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      record.styleCategory,
-                      style: Theme.of(context).textTheme.titleMedium,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                // Story-ring style avatar
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppColors.storyGradient,
+                  ),
+                  padding: const EdgeInsets.all(2),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Theme.of(context).scaffoldBackgroundColor,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _TemperatureChip(temperature: record.colorTemperature),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatDate(record.createdAt),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
+                    padding: const EdgeInsets.all(2),
+                    child: CircleAvatar(
+                      radius: 14,
+                      backgroundColor: AppColors.dividerLight,
+                      child: Text(
+                        record.styleCategory.isNotEmpty ? record.styleCategory[0] : '?',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-              // Score
-              ScoreIndicator(score: record.overallScore, size: 52),
-            ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        record.styleCategory,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        _formatDate(record.createdAt),
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
+                      ),
+                    ],
+                  ),
+                ),
+                // Score badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.instagramGradient,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${record.overallScore}점',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          // Image (full-width, Instagram style)
+          AspectRatio(
+            aspectRatio: 1,
+            child: _buildImage(record.imagePath),
+          ),
+          // Action bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                _TempChip(temperature: record.colorTemperature),
+                const SizedBox(width: 8),
+                Text(
+                  '${record.styleCategory} · ${record.overallScore}점',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                ),
+                const Spacer(),
+                Icon(Icons.chevron_right, color: AppColors.textSecondaryLight, size: 20),
+              ],
+            ),
+          ),
+          Divider(height: 0.5),
+        ],
       ),
     );
   }
 
-  Widget _buildThumbnail(String path) {
+  Widget _buildImage(String path) {
     final file = File(path);
     if (file.existsSync()) {
       return Image.file(file, fit: BoxFit.cover);
     }
     return Container(
       color: AppColors.dividerLight,
-      child: const Icon(Icons.image, color: AppColors.textSecondaryLight),
+      child: const Center(child: Icon(Icons.image, size: 40, color: AppColors.textSecondaryLight)),
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
-  }
+  String _formatDate(DateTime d) =>
+      '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
 }
 
-class _TemperatureChip extends StatelessWidget {
+class _TempChip extends StatelessWidget {
   final String temperature;
-
-  const _TemperatureChip({required this.temperature});
+  const _TempChip({required this.temperature});
 
   @override
   Widget build(BuildContext context) {
-    Color chipColor;
-    String label;
-
-    switch (temperature) {
-      case 'warm':
-        chipColor = AppColors.warmColor;
-        label = '따뜻한';
-      case 'cool':
-        chipColor = AppColors.coolColor;
-        label = '차가운';
-      default:
-        chipColor = AppColors.neutralColor;
-        label = '중성';
-    }
-
+    final (Color c, String l) = switch (temperature) {
+      'warm' => (AppColors.warmColor, '따뜻한'),
+      'cool' => (AppColors.coolColor, '차가운'),
+      _ => (AppColors.neutralColor, '중성'),
+    };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: chipColor.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
+        color: c.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          color: chipColor,
-        ),
-      ),
+      child: Text(l, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c)),
     );
   }
 }

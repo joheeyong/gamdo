@@ -10,7 +10,7 @@ part 'api_client.g.dart';
 Dio dio(Ref ref) {
   final dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 120),
+    receiveTimeout: const Duration(minutes: 5),
     headers: {
       'Content-Type': 'application/json',
     },

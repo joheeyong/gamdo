@@ -10,6 +10,7 @@ import '../../features/photo_upload/presentation/photo_upload_screen.dart';
 import '../../features/analysis/presentation/analysis_result_screen.dart';
 import '../../features/history/presentation/history_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../theme/app_colors.dart';
 
 part 'app_router.g.dart';
 
@@ -42,27 +43,19 @@ GoRouter router(Ref ref) {
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
-        builder: (context, state, child) {
-          return ScaffoldWithNavBar(child: child);
-        },
+        builder: (context, state, child) => _InstaNavShell(child: child),
         routes: [
           GoRoute(
             path: AppRoutes.home,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: HomeScreen(),
-            ),
+            pageBuilder: (context, state) => const NoTransitionPage(child: HomeScreen()),
           ),
           GoRoute(
             path: AppRoutes.history,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: HistoryScreen(),
-            ),
+            pageBuilder: (context, state) => const NoTransitionPage(child: HistoryScreen()),
           ),
           GoRoute(
             path: AppRoutes.settings,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: SettingsScreen(),
-            ),
+            pageBuilder: (context, state) => const NoTransitionPage(child: SettingsScreen()),
           ),
         ],
       ),
@@ -85,54 +78,74 @@ GoRouter router(Ref ref) {
   );
 }
 
-class ScaffoldWithNavBar extends StatelessWidget {
+/// Instagram-style bottom navigation shell
+class _InstaNavShell extends StatelessWidget {
   final Widget child;
+  const _InstaNavShell({required this.child});
 
-  const ScaffoldWithNavBar({super.key, required this.child});
-
-  static int _calculateSelectedIndex(BuildContext context) {
-    final String location = GoRouterState.of(context).uri.path;
-    if (location.startsWith(AppRoutes.home)) return 0;
-    if (location.startsWith(AppRoutes.history)) return 1;
-    if (location.startsWith(AppRoutes.settings)) return 2;
+  static int _index(BuildContext context) {
+    final loc = GoRouterState.of(context).uri.path;
+    if (loc.startsWith(AppRoutes.history)) return 1;
+    if (loc.startsWith(AppRoutes.settings)) return 3;
     return 0;
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedIndex = _calculateSelectedIndex(context);
+    final idx = _index(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) {
-          switch (index) {
-            case 0:
-              context.go(AppRoutes.home);
-            case 1:
-              context.go(AppRoutes.history);
-            case 2:
-              context.go(AppRoutes.settings);
-          }
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: '홈',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
+              width: 0.5,
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: '기록',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: '설정',
-          ),
-        ],
+        ),
+        child: NavigationBar(
+          height: 56,
+          selectedIndex: idx > 2 ? 3 : idx,
+          onDestinationSelected: (i) {
+            switch (i) {
+              case 0: context.go(AppRoutes.home);
+              case 1: context.go(AppRoutes.history);
+              case 2: context.push(AppRoutes.photoUpload); // 중앙 버튼 → 업로드
+              case 3: context.go(AppRoutes.settings);
+            }
+          },
+          destinations: [
+            const NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: '홈',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.grid_on_outlined),
+              selectedIcon: Icon(Icons.grid_on),
+              label: '기록',
+            ),
+            NavigationDestination(
+              icon: ShaderMask(
+                shaderCallback: (bounds) => AppColors.instagramGradient.createShader(bounds),
+                child: const Icon(Icons.add_circle_outline, size: 32, color: Colors.white),
+              ),
+              selectedIcon: ShaderMask(
+                shaderCallback: (bounds) => AppColors.instagramGradient.createShader(bounds),
+                child: const Icon(Icons.add_circle, size: 32, color: Colors.white),
+              ),
+              label: '',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: '설정',
+            ),
+          ],
+        ),
       ),
     );
   }

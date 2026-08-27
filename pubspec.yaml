@@ -25,7 +25,8 @@ dependencies:
 
   # Local Database
   drift: any
-  sqlite3_flutter_libs: any
+  sqlite3_flutter_libs: ^0.5.28
+  sqlite3: any
 
   # Models
   freezed_annotation: any

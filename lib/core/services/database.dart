@@ -27,26 +27,22 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
-  // Insert
   Future<int> insertAnalysis(AnalysisRecordsCompanion entry) {
     return into(analysisRecords).insert(entry);
   }
 
-  // Get all, ordered by date
   Future<List<AnalysisRecord>> getAllAnalyses() {
     return (select(analysisRecords)
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
         .get();
   }
 
-  // Watch all analyses as stream
   Stream<List<AnalysisRecord>> watchAllAnalyses() {
     return (select(analysisRecords)
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
         .watch();
   }
 
-  // Get recent analyses (limit)
   Future<List<AnalysisRecord>> getRecentAnalyses({int limit = 5}) {
     return (select(analysisRecords)
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
@@ -54,7 +50,6 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
-  // Filter by style
   Stream<List<AnalysisRecord>> watchByStyle(String style) {
     return (select(analysisRecords)
           ..where((t) => t.styleCategory.equals(style))
@@ -62,12 +57,10 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
-  // Delete
   Future<int> deleteAnalysis(int id) {
     return (delete(analysisRecords)..where((t) => t.id.equals(id))).go();
   }
 
-  // Get by id
   Future<AnalysisRecord?> getAnalysisById(int id) {
     return (select(analysisRecords)..where((t) => t.id.equals(id)))
         .getSingleOrNull();

@@ -4,7 +4,7 @@ import 'package:gamdo/l10n/app_localizations.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
-import 'core/providers/theme_provider.dart' as tp;
+import 'core/providers/theme_provider.dart';
 
 class GamdoApp extends ConsumerWidget {
   const GamdoApp({super.key});
@@ -12,7 +12,7 @@ class GamdoApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    final isDarkMode = ref.watch(tp.themeModeProvider).value ?? false;
+    final isDarkMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: '감도',

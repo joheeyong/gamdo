@@ -1,21 +1,22 @@
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-import '../services/storage_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-part 'theme_provider.g.dart';
-
-@riverpod
-class ThemeMode extends _$ThemeMode {
+class ThemeModeNotifier extends Notifier<bool> {
   @override
-  FutureOr<bool> build() async {
-    final storage = ref.read(storageServiceProvider);
-    return storage.isDarkMode();
+  bool build() => false;
+
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool('dark_mode') ?? false;
   }
 
   Future<void> toggle() async {
-    final storage = ref.read(storageServiceProvider);
-    final current = state.value ?? false;
-    final newValue = !current;
-    await storage.setDarkMode(newValue);
-    state = AsyncData(newValue);
+    state = !state;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('dark_mode', state);
   }
 }
+
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, bool>(() {
+  return ThemeModeNotifier();
+});
