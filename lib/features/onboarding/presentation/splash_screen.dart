@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
@@ -34,6 +36,13 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _navigate() async {
     try {
+      // Instagram 토큰 복원 + Firebase 스타일 프로필 로드 (실패해도 네비게이션 진행)
+      try {
+        await ref.read(instagramAuthProvider.notifier).init();
+      } catch (_) {
+        // Instagram 초기화 실패는 무시 — 앱 사용에 필수가 아님
+      }
+
       final prefs = await SharedPreferences.getInstance();
       final done = prefs.getBool('onboarding_complete') ?? false;
       if (!mounted) return;

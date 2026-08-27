@@ -50,7 +50,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _completeOnboarding() async {
     final storage = StorageService();
     await storage.setOnboardingComplete();
-    if (mounted) context.go(AppRoutes.home);
+    if (mounted) context.go(AppRoutes.instagramLogin);
   }
 
   @override

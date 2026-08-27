@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/extensions/context_extensions.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/instagram_widgets.dart';
+import '../../analysis/presentation/analysis_provider.dart';
 import '../providers/home_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -15,6 +17,9 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final analysesAsync = ref.watch(recentAnalysesProvider);
+    final instagramAuth = ref.watch(instagramAuthProvider);
+    final pipelineState = ref.watch(styleAnalysisPipelineProvider);
+    final hasStyleProfile = ref.watch(userStyleProfileProvider) != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -38,16 +43,210 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: analysesAsync.when(
-        data: (analyses) {
-          if (analyses.isEmpty) return _EmptyFeed();
-          return _AnalysisFeed(analyses: analyses);
-        },
-        loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
-        error: (e, st) {
-          print('[Home] DB error: $e\n$st');
-          return Center(child: Text('오류: $e'));
-        },
+      body: Column(
+        children: [
+          // 분석 진행 상태 배너
+          if (pipelineState.status != StyleAnalysisStatus.idle)
+            _AnalysisBanner(state: pipelineState),
+          if (instagramAuth.isConnected)
+            _InstagramProfileCard(
+              auth: instagramAuth,
+              hasStyleProfile: hasStyleProfile,
+            ),
+          Expanded(
+            child: analysesAsync.when(
+              data: (analyses) {
+                if (analyses.isEmpty) return _EmptyFeed();
+                return _AnalysisFeed(analyses: analyses);
+              },
+              loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
+              error: (e, st) {
+                return Center(child: Text('오류: $e'));
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InstagramProfileCard extends StatelessWidget {
+  final InstagramAuth auth;
+  final bool hasStyleProfile;
+  const _InstagramProfileCard({
+    required this.auth,
+    this.hasStyleProfile = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.08),
+            AppColors.accent.withValues(alpha: 0.08),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          InstagramGradientAvatar(
+            size: 40,
+            child: const Icon(
+              Icons.camera_alt,
+              size: 18,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  auth.username != null
+                      ? '@${auth.username}'
+                      : 'Instagram 연결됨',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hasStyleProfile
+                      ? '스타일 프로필 적용 중'
+                      : '스타일 프로필 분석 가능',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: hasStyleProfile
+                        ? AppColors.primary
+                        : AppColors.textSecondaryLight,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              gradient: AppColors.instagramGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              '연결됨',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnalysisBanner extends ConsumerStatefulWidget {
+  final StyleAnalysisState state;
+  const _AnalysisBanner({required this.state});
+
+  @override
+  ConsumerState<_AnalysisBanner> createState() => _AnalysisBannerState();
+}
+
+class _AnalysisBannerState extends ConsumerState<_AnalysisBanner> {
+  bool _dismissed = false;
+
+  @override
+  void didUpdateWidget(covariant _AnalysisBanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.state.status == StyleAnalysisStatus.completed &&
+        oldWidget.state.status != StyleAnalysisStatus.completed) {
+      _dismissed = false;
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) {
+          ref.read(styleAnalysisPipelineProvider.notifier).reset();
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_dismissed) return const SizedBox.shrink();
+
+    final isError = widget.state.status == StyleAnalysisStatus.error;
+    final isCompleted = widget.state.status == StyleAnalysisStatus.completed;
+    final isInProgress = !isError && !isCompleted;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isError
+            ? AppColors.error.withValues(alpha: 0.1)
+            : isCompleted
+                ? Colors.green.withValues(alpha: 0.1)
+                : AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isError
+              ? AppColors.error.withValues(alpha: 0.3)
+              : isCompleted
+                  ? Colors.green.withValues(alpha: 0.3)
+                  : AppColors.primary.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (isInProgress)
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Icon(
+              isCompleted ? Icons.check_circle : Icons.error_outline,
+              size: 18,
+              color: isCompleted ? Colors.green : AppColors.error,
+            ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              widget.state.statusMessage,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: isError ? AppColors.error : null,
+              ),
+            ),
+          ),
+          if (isError || isCompleted)
+            GestureDetector(
+              onTap: () {
+                setState(() => _dismissed = true);
+                ref.read(styleAnalysisPipelineProvider.notifier).reset();
+              },
+              child: Icon(
+                Icons.close,
+                size: 18,
+                color: AppColors.textSecondaryLight,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -60,25 +259,13 @@ class _EmptyFeed extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Instagram story-style ring
-          Container(
-            width: 96,
-            height: 96,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: AppColors.storyGradient,
-            ),
-            padding: const EdgeInsets.all(3),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Theme.of(context).scaffoldBackgroundColor,
-              ),
-              child: Icon(
-                Icons.camera_alt_outlined,
-                size: 36,
-                color: AppColors.textSecondaryLight,
-              ),
+          InstagramGradientAvatar(
+            size: 96,
+            borderWidth: 3,
+            child: Icon(
+              Icons.camera_alt_outlined,
+              size: 36,
+              color: AppColors.textSecondaryLight,
             ),
           ),
           const SizedBox(height: 24),
@@ -97,22 +284,12 @@ class _EmptyFeed extends StatelessWidget {
           const SizedBox(height: 24),
           SizedBox(
             width: 200,
-            height: 44,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: AppColors.instagramGradient,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ElevatedButton(
-                onPressed: () => context.push(AppRoutes.photoUpload),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                ),
-                child: const Text(
-                  '첫 사진 분석하기',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                ),
+            child: InstagramGradientButton(
+              height: 44,
+              onPressed: () => context.push(AppRoutes.photoUpload),
+              child: const Text(
+                '첫 사진 분석하기',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -163,19 +340,9 @@ class _FeedCard extends StatelessWidget {
             child: Row(
               children: [
                 // Story-ring style avatar
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppColors.storyGradient,
-                  ),
-                  padding: const EdgeInsets.all(2),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                    ),
+                InstagramGradientAvatar(
+                  size: 36,
+                  child: Padding(
                     padding: const EdgeInsets.all(2),
                     child: CircleAvatar(
                       radius: 14,

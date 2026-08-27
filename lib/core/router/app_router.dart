@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../features/auth/presentation/instagram_login_screen.dart';
 import '../../features/onboarding/presentation/splash_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -17,6 +18,7 @@ part 'app_router.g.dart';
 class AppRoutes {
   static const String splash = '/';
   static const String onboarding = '/onboarding';
+  static const String instagramLogin = '/instagram-login';
   static const String home = '/home';
   static const String photoUpload = '/photo-upload';
   static const String analysisResult = '/analysis-result';
@@ -40,6 +42,10 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.instagramLogin,
+        builder: (context, state) => const InstagramLoginScreen(),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
