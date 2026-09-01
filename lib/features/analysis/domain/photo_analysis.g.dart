@@ -23,6 +23,9 @@ _PhotoAnalysisResponse _$PhotoAnalysisResponseFromJson(
       .map((e) => e as String)
       .toList(),
   overallScore: (json['overallScore'] as num).toInt(),
+  hashtags:
+      (json['hashtags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const [],
 );
 
 Map<String, dynamic> _$PhotoAnalysisResponseToJson(
@@ -34,6 +37,7 @@ Map<String, dynamic> _$PhotoAnalysisResponseToJson(
   'shootingTips': instance.shootingTips,
   'editingTips': instance.editingTips,
   'overallScore': instance.overallScore,
+  'hashtags': instance.hashtags,
 };
 
 _ColorAnalysis _$ColorAnalysisFromJson(Map<String, dynamic> json) =>

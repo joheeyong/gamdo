@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
   firebase_core
   firebase_database
+  gal
   sqlite3_flutter_libs
   url_launcher_windows
   window_to_front

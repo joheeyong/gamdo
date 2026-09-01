@@ -27,6 +27,14 @@ class ImageService {
     return File(image.path);
   }
 
+  Future<List<File>> pickMultipleFromGallery() async {
+    final List<XFile> images = await _picker.pickMultiImage(
+      maxWidth: ApiConstants.maxImageSize.toDouble(),
+      maxHeight: ApiConstants.maxImageSize.toDouble(),
+    );
+    return images.map((xf) => File(xf.path)).toList();
+  }
+
   Future<File?> pickFromCamera() async {
     final XFile? image = await _picker.pickImage(
       source: ImageSource.camera,

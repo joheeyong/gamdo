@@ -30,6 +30,7 @@ class AppTheme {
         centerTitle: false,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         titleTextStyle: TextStyle(
+          inherit: false,
           fontFamily: AppTypography.fontFamily,
           fontSize: 22,
           fontWeight: FontWeight.w700,
@@ -55,6 +56,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(8),
           ),
           textStyle: const TextStyle(
+            inherit: false,
             fontFamily: AppTypography.fontFamily,
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -70,6 +72,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(8),
           ),
           textStyle: const TextStyle(
+            inherit: false,
             fontFamily: AppTypography.fontFamily,
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -82,6 +85,7 @@ class AppTheme {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
+              inherit: false,
               fontSize: 10,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimaryLight,
@@ -89,6 +93,7 @@ class AppTheme {
             );
           }
           return const TextStyle(
+            inherit: false,
             fontSize: 10,
             fontWeight: FontWeight.w400,
             color: AppColors.textSecondaryLight,
@@ -150,6 +155,7 @@ class AppTheme {
         centerTitle: false,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         titleTextStyle: TextStyle(
+          inherit: false,
           fontFamily: AppTypography.fontFamily,
           fontSize: 22,
           fontWeight: FontWeight.w700,
@@ -175,6 +181,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(8),
           ),
           textStyle: const TextStyle(
+            inherit: false,
             fontFamily: AppTypography.fontFamily,
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -197,6 +204,7 @@ class AppTheme {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
+              inherit: false,
               fontSize: 10,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimaryDark,
@@ -204,6 +212,7 @@ class AppTheme {
             );
           }
           return const TextStyle(
+            inherit: false,
             fontSize: 10,
             fontWeight: FontWeight.w400,
             color: AppColors.textSecondaryDark,

@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PhotoAnalysisResponse {
 
- ColorAnalysis get colorAnalysis; CompositionAnalysis get compositionAnalysis; ToneReport get toneReport; List<String> get shootingTips; List<String> get editingTips; int get overallScore;
+ ColorAnalysis get colorAnalysis; CompositionAnalysis get compositionAnalysis; ToneReport get toneReport; List<String> get shootingTips; List<String> get editingTips; int get overallScore; List<String> get hashtags;
 /// Create a copy of PhotoAnalysisResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $PhotoAnalysisResponseCopyWith<PhotoAnalysisResponse> get copyWith => _$PhotoAna
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhotoAnalysisResponse&&(identical(other.colorAnalysis, colorAnalysis) || other.colorAnalysis == colorAnalysis)&&(identical(other.compositionAnalysis, compositionAnalysis) || other.compositionAnalysis == compositionAnalysis)&&(identical(other.toneReport, toneReport) || other.toneReport == toneReport)&&const DeepCollectionEquality().equals(other.shootingTips, shootingTips)&&const DeepCollectionEquality().equals(other.editingTips, editingTips)&&(identical(other.overallScore, overallScore) || other.overallScore == overallScore));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhotoAnalysisResponse&&(identical(other.colorAnalysis, colorAnalysis) || other.colorAnalysis == colorAnalysis)&&(identical(other.compositionAnalysis, compositionAnalysis) || other.compositionAnalysis == compositionAnalysis)&&(identical(other.toneReport, toneReport) || other.toneReport == toneReport)&&const DeepCollectionEquality().equals(other.shootingTips, shootingTips)&&const DeepCollectionEquality().equals(other.editingTips, editingTips)&&(identical(other.overallScore, overallScore) || other.overallScore == overallScore)&&const DeepCollectionEquality().equals(other.hashtags, hashtags));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,colorAnalysis,compositionAnalysis,toneReport,const DeepCollectionEquality().hash(shootingTips),const DeepCollectionEquality().hash(editingTips),overallScore);
+int get hashCode => Object.hash(runtimeType,colorAnalysis,compositionAnalysis,toneReport,const DeepCollectionEquality().hash(shootingTips),const DeepCollectionEquality().hash(editingTips),overallScore,const DeepCollectionEquality().hash(hashtags));
 
 @override
 String toString() {
-  return 'PhotoAnalysisResponse(colorAnalysis: $colorAnalysis, compositionAnalysis: $compositionAnalysis, toneReport: $toneReport, shootingTips: $shootingTips, editingTips: $editingTips, overallScore: $overallScore)';
+  return 'PhotoAnalysisResponse(colorAnalysis: $colorAnalysis, compositionAnalysis: $compositionAnalysis, toneReport: $toneReport, shootingTips: $shootingTips, editingTips: $editingTips, overallScore: $overallScore, hashtags: $hashtags)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $PhotoAnalysisResponseCopyWith<$Res>  {
   factory $PhotoAnalysisResponseCopyWith(PhotoAnalysisResponse value, $Res Function(PhotoAnalysisResponse) _then) = _$PhotoAnalysisResponseCopyWithImpl;
 @useResult
 $Res call({
- ColorAnalysis colorAnalysis, CompositionAnalysis compositionAnalysis, ToneReport toneReport, List<String> shootingTips, List<String> editingTips, int overallScore
+ ColorAnalysis colorAnalysis, CompositionAnalysis compositionAnalysis, ToneReport toneReport, List<String> shootingTips, List<String> editingTips, int overallScore, List<String> hashtags
 });
 
 
@@ -65,7 +65,7 @@ class _$PhotoAnalysisResponseCopyWithImpl<$Res>
 
 /// Create a copy of PhotoAnalysisResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? colorAnalysis = null,Object? compositionAnalysis = null,Object? toneReport = null,Object? shootingTips = null,Object? editingTips = null,Object? overallScore = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? colorAnalysis = null,Object? compositionAnalysis = null,Object? toneReport = null,Object? shootingTips = null,Object? editingTips = null,Object? overallScore = null,Object? hashtags = null,}) {
   return _then(_self.copyWith(
 colorAnalysis: null == colorAnalysis ? _self.colorAnalysis : colorAnalysis // ignore: cast_nullable_to_non_nullable
 as ColorAnalysis,compositionAnalysis: null == compositionAnalysis ? _self.compositionAnalysis : compositionAnalysis // ignore: cast_nullable_to_non_nullable
@@ -73,7 +73,8 @@ as CompositionAnalysis,toneReport: null == toneReport ? _self.toneReport : toneR
 as ToneReport,shootingTips: null == shootingTips ? _self.shootingTips : shootingTips // ignore: cast_nullable_to_non_nullable
 as List<String>,editingTips: null == editingTips ? _self.editingTips : editingTips // ignore: cast_nullable_to_non_nullable
 as List<String>,overallScore: null == overallScore ? _self.overallScore : overallScore // ignore: cast_nullable_to_non_nullable
-as int,
+as int,hashtags: null == hashtags ? _self.hashtags : hashtags // ignore: cast_nullable_to_non_nullable
+as List<String>,
   ));
 }
 /// Create a copy of PhotoAnalysisResponse
@@ -182,10 +183,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> shootingTips,  List<String> editingTips,  int overallScore)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> shootingTips,  List<String> editingTips,  int overallScore,  List<String> hashtags)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PhotoAnalysisResponse() when $default != null:
-return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.shootingTips,_that.editingTips,_that.overallScore);case _:
+return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.shootingTips,_that.editingTips,_that.overallScore,_that.hashtags);case _:
   return orElse();
 
 }
@@ -203,10 +204,10 @@ return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> shootingTips,  List<String> editingTips,  int overallScore)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> shootingTips,  List<String> editingTips,  int overallScore,  List<String> hashtags)  $default,) {final _that = this;
 switch (_that) {
 case _PhotoAnalysisResponse():
-return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.shootingTips,_that.editingTips,_that.overallScore);}
+return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.shootingTips,_that.editingTips,_that.overallScore,_that.hashtags);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -220,10 +221,10 @@ return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> shootingTips,  List<String> editingTips,  int overallScore)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> shootingTips,  List<String> editingTips,  int overallScore,  List<String> hashtags)?  $default,) {final _that = this;
 switch (_that) {
 case _PhotoAnalysisResponse() when $default != null:
-return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.shootingTips,_that.editingTips,_that.overallScore);case _:
+return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.shootingTips,_that.editingTips,_that.overallScore,_that.hashtags);case _:
   return null;
 
 }
@@ -235,7 +236,7 @@ return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_
 @JsonSerializable()
 
 class _PhotoAnalysisResponse implements PhotoAnalysisResponse {
-  const _PhotoAnalysisResponse({required this.colorAnalysis, required this.compositionAnalysis, required this.toneReport, required final  List<String> shootingTips, required final  List<String> editingTips, required this.overallScore}): _shootingTips = shootingTips,_editingTips = editingTips;
+  const _PhotoAnalysisResponse({required this.colorAnalysis, required this.compositionAnalysis, required this.toneReport, required final  List<String> shootingTips, required final  List<String> editingTips, required this.overallScore, final  List<String> hashtags = const []}): _shootingTips = shootingTips,_editingTips = editingTips,_hashtags = hashtags;
   factory _PhotoAnalysisResponse.fromJson(Map<String, dynamic> json) => _$PhotoAnalysisResponseFromJson(json);
 
 @override final  ColorAnalysis colorAnalysis;
@@ -256,6 +257,13 @@ class _PhotoAnalysisResponse implements PhotoAnalysisResponse {
 }
 
 @override final  int overallScore;
+ final  List<String> _hashtags;
+@override@JsonKey() List<String> get hashtags {
+  if (_hashtags is EqualUnmodifiableListView) return _hashtags;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_hashtags);
+}
+
 
 /// Create a copy of PhotoAnalysisResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -270,16 +278,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhotoAnalysisResponse&&(identical(other.colorAnalysis, colorAnalysis) || other.colorAnalysis == colorAnalysis)&&(identical(other.compositionAnalysis, compositionAnalysis) || other.compositionAnalysis == compositionAnalysis)&&(identical(other.toneReport, toneReport) || other.toneReport == toneReport)&&const DeepCollectionEquality().equals(other._shootingTips, _shootingTips)&&const DeepCollectionEquality().equals(other._editingTips, _editingTips)&&(identical(other.overallScore, overallScore) || other.overallScore == overallScore));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhotoAnalysisResponse&&(identical(other.colorAnalysis, colorAnalysis) || other.colorAnalysis == colorAnalysis)&&(identical(other.compositionAnalysis, compositionAnalysis) || other.compositionAnalysis == compositionAnalysis)&&(identical(other.toneReport, toneReport) || other.toneReport == toneReport)&&const DeepCollectionEquality().equals(other._shootingTips, _shootingTips)&&const DeepCollectionEquality().equals(other._editingTips, _editingTips)&&(identical(other.overallScore, overallScore) || other.overallScore == overallScore)&&const DeepCollectionEquality().equals(other._hashtags, _hashtags));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,colorAnalysis,compositionAnalysis,toneReport,const DeepCollectionEquality().hash(_shootingTips),const DeepCollectionEquality().hash(_editingTips),overallScore);
+int get hashCode => Object.hash(runtimeType,colorAnalysis,compositionAnalysis,toneReport,const DeepCollectionEquality().hash(_shootingTips),const DeepCollectionEquality().hash(_editingTips),overallScore,const DeepCollectionEquality().hash(_hashtags));
 
 @override
 String toString() {
-  return 'PhotoAnalysisResponse(colorAnalysis: $colorAnalysis, compositionAnalysis: $compositionAnalysis, toneReport: $toneReport, shootingTips: $shootingTips, editingTips: $editingTips, overallScore: $overallScore)';
+  return 'PhotoAnalysisResponse(colorAnalysis: $colorAnalysis, compositionAnalysis: $compositionAnalysis, toneReport: $toneReport, shootingTips: $shootingTips, editingTips: $editingTips, overallScore: $overallScore, hashtags: $hashtags)';
 }
 
 
@@ -290,7 +298,7 @@ abstract mixin class _$PhotoAnalysisResponseCopyWith<$Res> implements $PhotoAnal
   factory _$PhotoAnalysisResponseCopyWith(_PhotoAnalysisResponse value, $Res Function(_PhotoAnalysisResponse) _then) = __$PhotoAnalysisResponseCopyWithImpl;
 @override @useResult
 $Res call({
- ColorAnalysis colorAnalysis, CompositionAnalysis compositionAnalysis, ToneReport toneReport, List<String> shootingTips, List<String> editingTips, int overallScore
+ ColorAnalysis colorAnalysis, CompositionAnalysis compositionAnalysis, ToneReport toneReport, List<String> shootingTips, List<String> editingTips, int overallScore, List<String> hashtags
 });
 
 
@@ -307,7 +315,7 @@ class __$PhotoAnalysisResponseCopyWithImpl<$Res>
 
 /// Create a copy of PhotoAnalysisResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? colorAnalysis = null,Object? compositionAnalysis = null,Object? toneReport = null,Object? shootingTips = null,Object? editingTips = null,Object? overallScore = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? colorAnalysis = null,Object? compositionAnalysis = null,Object? toneReport = null,Object? shootingTips = null,Object? editingTips = null,Object? overallScore = null,Object? hashtags = null,}) {
   return _then(_PhotoAnalysisResponse(
 colorAnalysis: null == colorAnalysis ? _self.colorAnalysis : colorAnalysis // ignore: cast_nullable_to_non_nullable
 as ColorAnalysis,compositionAnalysis: null == compositionAnalysis ? _self.compositionAnalysis : compositionAnalysis // ignore: cast_nullable_to_non_nullable
@@ -315,7 +323,8 @@ as CompositionAnalysis,toneReport: null == toneReport ? _self.toneReport : toneR
 as ToneReport,shootingTips: null == shootingTips ? _self._shootingTips : shootingTips // ignore: cast_nullable_to_non_nullable
 as List<String>,editingTips: null == editingTips ? _self._editingTips : editingTips // ignore: cast_nullable_to_non_nullable
 as List<String>,overallScore: null == overallScore ? _self.overallScore : overallScore // ignore: cast_nullable_to_non_nullable
-as int,
+as int,hashtags: null == hashtags ? _self._hashtags : hashtags // ignore: cast_nullable_to_non_nullable
+as List<String>,
   ));
 }
 

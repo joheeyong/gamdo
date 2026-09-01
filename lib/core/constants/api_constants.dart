@@ -1,7 +1,7 @@
 class ApiConstants {
   ApiConstants._();
 
-  static const String defaultProxyUrl = 'https://pins-held-massachusetts-publish.trycloudflare.com'; // Cloudflare 터널
+  static const String defaultProxyUrl = 'https://cinderella-vitiable-noncapitalistically.ngrok-free.dev'; // ngrok HTTPS 터널
   static const int maxImageSize = 1568;
   static const int fallbackImageSize = 800;
   static const int jpegQuality = 85;

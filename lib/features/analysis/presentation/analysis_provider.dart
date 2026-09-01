@@ -205,6 +205,7 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
         posts: posts,
         feeds: feeds,
         stories: stories,
+        userId: userId,
       );
 
       final styleProfile = result['styleProfile'] as Map<String, dynamic>?;

@@ -401,11 +401,13 @@ class _FeedCard extends StatelessWidget {
               children: [
                 _TempChip(temperature: record.colorTemperature),
                 const SizedBox(width: 8),
-                Text(
-                  '${record.styleCategory} · ${record.overallScore}점',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                Expanded(
+                  child: Text(
+                    '${record.styleCategory} · ${record.overallScore}점',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const Spacer(),
                 Icon(Icons.chevron_right, color: AppColors.textSecondaryLight, size: 20),
               ],
             ),

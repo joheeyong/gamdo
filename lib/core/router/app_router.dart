@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -9,6 +12,8 @@ import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/photo_upload/presentation/photo_upload_screen.dart';
 import '../../features/analysis/presentation/analysis_result_screen.dart';
+import '../../features/analysis/presentation/batch_transform_screen.dart';
+import '../../features/analysis/presentation/transform_screen.dart';
 import '../../features/history/presentation/history_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../theme/app_colors.dart';
@@ -22,6 +27,8 @@ class AppRoutes {
   static const String home = '/home';
   static const String photoUpload = '/photo-upload';
   static const String analysisResult = '/analysis-result';
+  static const String transform = '/transform';
+  static const String batchTransform = '/batch-transform';
   static const String history = '/history';
   static const String settings = '/settings';
 }
@@ -29,7 +36,7 @@ class AppRoutes {
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
-@riverpod
+@Riverpod(keepAlive: true)
 GoRouter router(Ref ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -80,14 +87,39 @@ GoRouter router(Ref ref) {
           );
         },
       ),
+      GoRoute(
+        path: AppRoutes.transform,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return TransformScreen(
+            imagePath: extra?['imagePath'] as String? ?? '',
+            analysisJson: extra?['analysisJson'] as String? ?? '{}',
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.batchTransform,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final files = extra?['imageFiles'] as List<File>? ?? [];
+          return BatchTransformScreen(imageFiles: files);
+        },
+      ),
     ],
   );
 }
 
 /// Instagram-style bottom navigation shell
-class _InstaNavShell extends StatelessWidget {
+class _InstaNavShell extends StatefulWidget {
   final Widget child;
   const _InstaNavShell({required this.child});
+
+  @override
+  State<_InstaNavShell> createState() => _InstaNavShellState();
+}
+
+class _InstaNavShellState extends State<_InstaNavShell> {
+  DateTime? _lastBackPress;
 
   static int _index(BuildContext context) {
     final loc = GoRouterState.of(context).uri.path;
@@ -100,57 +132,79 @@ class _InstaNavShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final idx = _index(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isHome = idx == 0;
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
-              width: 0.5,
+    return PopScope(
+      canPop: !isHome,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+
+        // 홈 화면: 2초 내 더블 클릭으로 앱 종료
+        final now = DateTime.now();
+        if (_lastBackPress != null &&
+            now.difference(_lastBackPress!) < const Duration(seconds: 2)) {
+          SystemNavigator.pop();
+          return;
+        }
+        _lastBackPress = now;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('뒤로 한번 더 누르면 앱이 종료됩니다'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      },
+      child: Scaffold(
+        body: widget.child,
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
+                width: 0.5,
+              ),
             ),
           ),
-        ),
-        child: NavigationBar(
-          height: 56,
-          selectedIndex: idx > 2 ? 3 : idx,
-          onDestinationSelected: (i) {
-            switch (i) {
-              case 0: context.go(AppRoutes.home);
-              case 1: context.go(AppRoutes.history);
-              case 2: context.push(AppRoutes.photoUpload); // 중앙 버튼 → 업로드
-              case 3: context.go(AppRoutes.settings);
-            }
-          },
-          destinations: [
-            const NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: '홈',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.grid_on_outlined),
-              selectedIcon: Icon(Icons.grid_on),
-              label: '기록',
-            ),
-            NavigationDestination(
-              icon: ShaderMask(
-                shaderCallback: (bounds) => AppColors.instagramGradient.createShader(bounds),
-                child: const Icon(Icons.add_circle_outline, size: 32, color: Colors.white),
+          child: NavigationBar(
+            height: 56,
+            selectedIndex: idx > 2 ? 3 : idx,
+            onDestinationSelected: (i) {
+              switch (i) {
+                case 0: context.go(AppRoutes.home);
+                case 1: context.go(AppRoutes.history);
+                case 2: context.push(AppRoutes.photoUpload); // 중앙 버튼 → 업로드
+                case 3: context.go(AppRoutes.settings);
+              }
+            },
+            destinations: [
+              const NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: '홈',
               ),
-              selectedIcon: ShaderMask(
-                shaderCallback: (bounds) => AppColors.instagramGradient.createShader(bounds),
-                child: const Icon(Icons.add_circle, size: 32, color: Colors.white),
+              const NavigationDestination(
+                icon: Icon(Icons.grid_on_outlined),
+                selectedIcon: Icon(Icons.grid_on),
+                label: '기록',
               ),
-              label: '',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: '설정',
-            ),
-          ],
+              NavigationDestination(
+                icon: ShaderMask(
+                  shaderCallback: (bounds) => AppColors.instagramGradient.createShader(bounds),
+                  child: const Icon(Icons.add_circle_outline, size: 32, color: Colors.white),
+                ),
+                selectedIcon: ShaderMask(
+                  shaderCallback: (bounds) => AppColors.instagramGradient.createShader(bounds),
+                  child: const Icon(Icons.add_circle, size: 32, color: Colors.white),
+                ),
+                label: '',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.person_outline),
+                selectedIcon: Icon(Icons.person),
+                label: '설정',
+              ),
+            ],
+          ),
         ),
       ),
     );

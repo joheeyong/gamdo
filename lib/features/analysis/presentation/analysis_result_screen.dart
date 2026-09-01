@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/extensions/context_extensions.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/instagram_widgets.dart';
 import '../../../core/widgets/score_indicator.dart';
 import '../domain/photo_analysis.dart';
 import 'widgets/color_palette_view.dart';
@@ -37,7 +39,19 @@ class AnalysisResultScreen extends StatelessWidget {
     }
 
     final analysisMap = jsonDecode(analysisJson!) as Map<String, dynamic>;
-    final analysis = PhotoAnalysisResponse.fromJson(analysisMap);
+
+    final PhotoAnalysisResponse analysis;
+    try {
+      analysis = PhotoAnalysisResponse.fromJson(analysisMap);
+    } catch (_) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('분석 결과')),
+        body: const Center(
+          child: Text('이전 형식의 분석 데이터입니다.\n새로 분석해 주세요.',
+              textAlign: TextAlign.center),
+        ),
+      );
+    }
 
     return Scaffold(
       body: CustomScrollView(
@@ -55,7 +69,13 @@ class AnalysisResultScreen extends StatelessWidget {
                 ),
                 child: const Icon(Icons.arrow_back, color: Colors.white),
               ),
-              onPressed: () => context.pop(),
+              onPressed: () {
+                if (Navigator.of(context).canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/home');
+                }
+              },
             ),
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
@@ -181,6 +201,37 @@ class AnalysisResultScreen extends StatelessWidget {
                   icon: Icons.tune_outlined,
                   color: AppColors.accent,
                 ),
+                const SizedBox(height: 24),
+
+                // 사진 변형 버튼
+                if (imagePath != null)
+                  InstagramGradientButton(
+                    onPressed: () {
+                      context.push(
+                        AppRoutes.transform,
+                        extra: {
+                          'imagePath': imagePath,
+                          'analysisJson': analysisJson,
+                        },
+                      );
+                    },
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.auto_fix_high, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text(
+                          '사진 변형하기',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                SizedBox(height: 20),
                 const SizedBox(height: 32),
               ]),
             ),
@@ -224,20 +275,22 @@ class _HarmonyCard extends StatelessWidget {
               color: context.colorScheme.primary,
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.colorHarmony,
-                  style: context.textTheme.bodySmall?.copyWith(
-                    color: context.colorScheme.onSurface.withValues(alpha: 0.6),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.colorHarmony,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
                   ),
-                ),
-                Text(
-                  harmony,
-                  style: context.textTheme.titleMedium,
-                ),
-              ],
+                  Text(
+                    harmony,
+                    style: context.textTheme.titleMedium,
+                  ),
+                ],
+              ),
             ),
           ],
         ),

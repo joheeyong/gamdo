@@ -12,6 +12,7 @@ sealed class PhotoAnalysisResponse with _$PhotoAnalysisResponse {
     required List<String> shootingTips,
     required List<String> editingTips,
     required int overallScore,
+    @Default([]) List<String> hashtags,
   }) = _PhotoAnalysisResponse;
 
   factory PhotoAnalysisResponse.fromJson(Map<String, dynamic> json) =>

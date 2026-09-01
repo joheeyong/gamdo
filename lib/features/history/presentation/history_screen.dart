@@ -101,8 +101,7 @@ class HistoryScreen extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     return _HistoryItem(
                       record: analyses[index],
-                      onDelete: () async {
-                        final db = ref.read(appDatabaseProvider);
+                      onConfirmDismiss: () async {
                         final confirm = await showDialog<bool>(
                           context: context,
                           builder: (ctx) => AlertDialog(
@@ -125,8 +124,11 @@ class HistoryScreen extends ConsumerWidget {
                           ),
                         );
                         if (confirm == true) {
+                          final db = ref.read(appDatabaseProvider);
                           await db.deleteAnalysis(analyses[index].id);
+                          return true;
                         }
+                        return false;
                       },
                     );
                   },
@@ -144,11 +146,11 @@ class HistoryScreen extends ConsumerWidget {
 
 class _HistoryItem extends StatelessWidget {
   final AnalysisRecord record;
-  final VoidCallback onDelete;
+  final Future<bool> Function() onConfirmDismiss;
 
   const _HistoryItem({
     required this.record,
-    required this.onDelete,
+    required this.onConfirmDismiss,
   });
 
   @override
@@ -156,7 +158,7 @@ class _HistoryItem extends StatelessWidget {
     return Dismissible(
       key: Key('analysis_${record.id}'),
       direction: DismissDirection.endToStart,
-      onDismissed: (_) => onDelete(),
+      confirmDismiss: (_) => onConfirmDismiss(),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),

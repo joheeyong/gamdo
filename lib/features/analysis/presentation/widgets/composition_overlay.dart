@@ -34,16 +34,21 @@ class _CompositionOverlayState extends State<CompositionOverlay> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.grid_on,
-                        size: 18, color: context.colorScheme.primary),
-                    const SizedBox(width: 8),
-                    Text(
-                      widget.technique,
-                      style: context.textTheme.titleMedium,
-                    ),
-                  ],
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(Icons.grid_on,
+                          size: 18, color: context.colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          widget.technique,
+                          style: context.textTheme.titleMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Row(
                   children: [
