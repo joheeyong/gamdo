@@ -96,3 +96,48 @@ abstract class _$AppTokenSetting extends $AsyncNotifier<String> {
     element.handleCreate(ref, build);
   }
 }
+
+@ProviderFor(ReshapeEnabledSetting)
+final reshapeEnabledSettingProvider = ReshapeEnabledSettingProvider._();
+
+final class ReshapeEnabledSettingProvider
+    extends $AsyncNotifierProvider<ReshapeEnabledSetting, bool> {
+  ReshapeEnabledSettingProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'reshapeEnabledSettingProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$reshapeEnabledSettingHash();
+
+  @$internal
+  @override
+  ReshapeEnabledSetting create() => ReshapeEnabledSetting();
+}
+
+String _$reshapeEnabledSettingHash() =>
+    r'bc8d20b0fb6d00daff75af4020b7ec181847e8ca';
+
+abstract class _$ReshapeEnabledSetting extends $AsyncNotifier<bool> {
+  FutureOr<bool> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<bool>, bool>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<bool>, bool>,
+              AsyncValue<bool>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

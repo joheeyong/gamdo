@@ -15,6 +15,7 @@ class StorageService {
   static const String _instagramTokenKey = 'instagram_token';
   static const String _instagramUserIdKey = 'instagram_user_id';
   static const String _instagramUsernameKey = 'instagram_username';
+  static const String _reshapeEnabledKey = 'reshape_enabled';
 
   Future<bool> isOnboardingComplete() async {
     final prefs = await SharedPreferences.getInstance();
@@ -54,6 +55,18 @@ class StorageService {
   Future<void> setAppToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_appTokenKey, token);
+  }
+
+  // ── 얼굴/체형 보정 ──
+
+  Future<bool> isReshapeEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_reshapeEnabledKey) ?? false;
+  }
+
+  Future<void> setReshapeEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_reshapeEnabledKey, value);
   }
 
   // ── Instagram ──

@@ -34,3 +34,20 @@ class AppTokenSetting extends _$AppTokenSetting {
     state = AsyncData(token);
   }
 }
+
+@riverpod
+class ReshapeEnabledSetting extends _$ReshapeEnabledSetting {
+  @override
+  FutureOr<bool> build() async {
+    final storage = ref.read(storageServiceProvider);
+    return await storage.isReshapeEnabled();
+  }
+
+  Future<void> toggle() async {
+    final current = state.value ?? false;
+    final newValue = !current;
+    final storage = ref.read(storageServiceProvider);
+    await storage.setReshapeEnabled(newValue);
+    state = AsyncData(newValue);
+  }
+}

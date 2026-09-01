@@ -7,6 +7,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/instagram_widgets.dart';
 import '../../analysis/presentation/analysis_provider.dart';
+import '../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -14,6 +15,8 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDarkMode = ref.watch(themeModeProvider);
+    final reshapeAsync = ref.watch(reshapeEnabledSettingProvider);
+    final isReshapeEnabled = reshapeAsync.value ?? false;
     final styleProfile = ref.watch(userStyleProfileProvider);
 
     return Scaffold(
@@ -33,6 +36,23 @@ class SettingsScreen extends ConsumerWidget {
               value: isDarkMode,
               onChanged: (_) {
                 ref.read(themeModeProvider.notifier).toggle();
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // 얼굴/체형 보정
+          Card(
+            child: SwitchListTile(
+              title: const Text('얼굴/체형 보정'),
+              subtitle: const Text(
+                'AI가 인물 사진에서 자동 추천',
+                style: TextStyle(fontSize: 12),
+              ),
+              secondary: const Icon(Icons.face_retouching_natural),
+              value: isReshapeEnabled,
+              onChanged: (_) {
+                ref.read(reshapeEnabledSettingProvider.notifier).toggle();
               },
             ),
           ),
