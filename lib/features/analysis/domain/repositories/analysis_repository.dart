@@ -18,6 +18,7 @@ abstract class AnalysisRepository {
     required File imageFile,
     Map<String, dynamic>? styleProfile,
     String userId,
+    bool reshapeEnabled,
     CancelToken? cancelToken,
   });
 

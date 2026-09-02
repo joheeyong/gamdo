@@ -45,6 +45,7 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
     required File imageFile,
     Map<String, dynamic>? styleProfile,
     String userId = '',
+    bool reshapeEnabled = false,
     CancelToken? cancelToken,
   }) async {
     final processed = await _imageService.processImage(imageFile);
@@ -53,6 +54,7 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
       imageBase64: processed.base64,
       styleProfile: styleProfile ?? {},
       userId: userId,
+      reshapeEnabled: reshapeEnabled,
       cancelToken: cancelToken,
     );
 

@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/providers/auth_provider.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../../../core/providers/style_profile_provider.dart';
 import '../../../../core/services/image_service.dart';
 import '../../di/analysis_providers.dart';
@@ -172,10 +173,14 @@ class TransformNotifier extends Notifier<TransformState> {
         cachedPreviewBase64: previewBase64,
       );
 
+      final reshapeEnabled =
+          ref.read(reshapeEnabledSettingProvider).value ?? false;
+
       final result = await repo.analyzeAndTransform(
         imageFile: imageFile,
         styleProfile: styleProfile,
         userId: userId,
+        reshapeEnabled: reshapeEnabled,
         cancelToken: _autoTransformCancelToken,
       );
 

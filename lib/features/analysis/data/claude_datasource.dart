@@ -87,6 +87,7 @@ class GamdoAgentDatasource {
     required Map<String, dynamic> styleProfile,
     String userId = '',
     String mediaType = 'image/jpeg',
+    bool reshapeEnabled = false,
     CancelToken? cancelToken,
   }) async {
     final baseUrl = await _getBaseUrl();
@@ -99,6 +100,9 @@ class GamdoAgentDatasource {
           'style_profile': styleProfile,
           'user_id': userId,
           'media_type': mediaType,
+          // 설정의 '얼굴/체형 보정' 토글. 서버로 보내지 않으면 꺼 둔 사용자도
+          // 체형이 변형된다 (기본값은 꺼짐).
+          'reshape_enabled': reshapeEnabled,
         },
         options: Options(
           sendTimeout: const Duration(seconds: 30),
