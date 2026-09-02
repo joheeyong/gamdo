@@ -48,6 +48,10 @@ class TransformState {
   /// 하늘/얼굴/배경 영역별 보정. 같은 이유로 보관한다.
   final Map<String, dynamic>? regionParams;
 
+  /// 대표 사진에서 뽑은 톤 커브 제어점. 프리셋 이름으로 표현되지 않아
+  /// 저장 시에도 그대로 되돌려 보내야 한다.
+  final List<dynamic>? toneCurvePoints;
+
   const TransformState({
     this.status = TransformStatus.idle,
     this.params = const TransformParams(),
@@ -60,6 +64,7 @@ class TransformState {
     this.paramsComment,
     this.autoEdits,
     this.regionParams,
+    this.toneCurvePoints,
   });
 
   TransformState copyWith({
@@ -74,6 +79,7 @@ class TransformState {
     String? paramsComment,
     Map<String, dynamic>? autoEdits,
     Map<String, dynamic>? regionParams,
+    List<dynamic>? toneCurvePoints,
   }) {
     return TransformState(
       status: status ?? this.status,
@@ -87,6 +93,7 @@ class TransformState {
       paramsComment: paramsComment ?? this.paramsComment,
       autoEdits: autoEdits ?? this.autoEdits,
       regionParams: regionParams ?? this.regionParams,
+      toneCurvePoints: toneCurvePoints ?? this.toneCurvePoints,
     );
   }
 }
@@ -198,6 +205,7 @@ class TransformNotifier extends Notifier<TransformState> {
         paramsComment: comment,
         autoEdits: analysisMap?['autoEdits'] as Map<String, dynamic>?,
         regionParams: analysisMap?['regionParams'] as Map<String, dynamic>?,
+        toneCurvePoints: paramsMap?['tone_curve_points'] as List<dynamic>?,
       );
 
       return (analysisJson: result.analysisJson, imagePath: result.imagePath);
@@ -313,6 +321,7 @@ class TransformNotifier extends Notifier<TransformState> {
         params: params,
         autoEdits: state.autoEdits,
         regionParams: state.regionParams,
+        toneCurvePoints: state.toneCurvePoints,
       );
 
       final imageB64 = result['image_base64'] as String?;

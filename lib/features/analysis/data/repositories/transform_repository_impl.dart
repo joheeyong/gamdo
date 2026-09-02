@@ -51,6 +51,7 @@ class TransformRepositoryImpl implements TransformRepository {
     required TransformParams params,
     Map<String, dynamic>? autoEdits,
     Map<String, dynamic>? regionParams,
+    List<dynamic>? toneCurvePoints,
     CancelToken? cancelToken,
   }) async {
     final base64 = imageBase64 ??
@@ -61,6 +62,7 @@ class TransformRepositoryImpl implements TransformRepository {
       preview: preview,
       autoEdits: autoEdits,
       regionParams: regionParams,
+      toneCurvePoints: toneCurvePoints,
       brightness: params.brightness,
       contrast: params.contrast,
       clarity: params.clarity,

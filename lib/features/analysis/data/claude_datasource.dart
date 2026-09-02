@@ -184,6 +184,7 @@ class GamdoAgentDatasource {
     double backgroundBlur = 0.0,
     Map<String, dynamic>? autoEdits,
     Map<String, dynamic>? regionParams,
+    List<dynamic>? toneCurvePoints,
     CancelToken? cancelToken,
   }) async {
     final baseUrl = await _getBaseUrl();
@@ -200,6 +201,7 @@ class GamdoAgentDatasource {
           // 기하·영역 보정을 함께 보내야 저장본이 미리보기와 같아진다
           'auto_edits': ?autoEdits,
           'region_params': ?regionParams,
+          'tone_curve_points': ?toneCurvePoints,
           'brightness': brightness,
           'contrast': contrast,
           'clarity': clarity,

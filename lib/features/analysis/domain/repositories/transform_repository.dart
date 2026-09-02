@@ -33,6 +33,7 @@ abstract class TransformRepository {
     required TransformParams params,
     Map<String, dynamic>? autoEdits,
     Map<String, dynamic>? regionParams,
+    List<dynamic>? toneCurvePoints,
     CancelToken? cancelToken,
   });
 }
