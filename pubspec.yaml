@@ -60,6 +60,7 @@ dependencies:
   intl: any
   uuid: any
   path: any
+  wakelock_plus: ^1.7.0
 
 dev_dependencies:
   flutter_test:

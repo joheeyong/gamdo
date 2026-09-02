@@ -37,7 +37,7 @@ class GamdoAgentDatasource {
         },
         options: Options(
           sendTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(minutes: 5),
+          receiveTimeout: const Duration(seconds: 120),
         ),
       );
 
@@ -68,7 +68,7 @@ class GamdoAgentDatasource {
         },
         options: Options(
           sendTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(minutes: 5),
+          receiveTimeout: const Duration(seconds: 120),
         ),
       );
 
@@ -102,7 +102,7 @@ class GamdoAgentDatasource {
         },
         options: Options(
           sendTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(minutes: 5),
+          receiveTimeout: const Duration(seconds: 120),
         ),
         cancelToken: cancelToken,
       );

@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/router/app_router.dart';
@@ -23,6 +25,10 @@ class PhotoUploadScreen extends ConsumerStatefulWidget {
 class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   File? _selectedImage;
   bool _isProcessing = false;
+
+  /// 재시도로 새 요청이 시작되면 이전 요청의 뒷정리가 로딩 상태를 꺼 버린다.
+  /// 마지막 요청만 상태를 되돌리도록 세대 번호로 구분한다.
+  int _analysisGeneration = 0;
 
   Future<void> _pickFromGallery() async {
     final imageService = ref.read(imageServiceProvider);
@@ -46,6 +52,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
 
   Future<void> _startAnalysis() async {
     if (_selectedImage == null) return;
+    final generation = ++_analysisGeneration;
     setState(() => _isProcessing = true);
 
     try {
@@ -68,9 +75,13 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
         _showError(state.errorMessage);
       }
     } catch (e) {
-      _showError(e is ApiException ? e.userMessage : null);
+      if (generation == _analysisGeneration) {
+        _showError(e is ApiException ? e.userMessage : null);
+      }
     } finally {
-      if (mounted) setState(() => _isProcessing = false);
+      if (mounted && generation == _analysisGeneration) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
@@ -163,6 +174,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
               ? _AnalysisWaitingView(
                   image: _selectedImage!,
                   onCancel: _cancelAnalysis,
+                  onRetry: _startAnalysis,
                 )
               : _UploadView(
                   selectedImage: _selectedImage,
@@ -255,14 +267,19 @@ class _UploadView extends StatelessWidget {
 class _AnalysisWaitingView extends StatefulWidget {
   final File image;
   final VoidCallback onCancel;
-  const _AnalysisWaitingView({required this.image, required this.onCancel});
+  final VoidCallback onRetry;
+  const _AnalysisWaitingView({
+    required this.image,
+    required this.onCancel,
+    required this.onRetry,
+  });
 
   @override
   State<_AnalysisWaitingView> createState() => _AnalysisWaitingViewState();
 }
 
 class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final PageController _tipPageController;
   late final Timer _tipTimer;
   int _currentTipIndex = 0;
@@ -272,6 +289,15 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
   static final int _tipLoopOrigin = _tips.length * 1000;
   int _currentStep = 0;
   late final Timer _stepTimer;
+
+  /// 경과 시간 기반 진행률. 단계는 12초면 마지막에 닿아 멈춰 버리는데,
+  /// 분석은 30~70초가 걸린다. 멈춘 화면처럼 보이지 않도록 시간으로 채운다.
+  late final Timer _elapsedTimer;
+  Duration _elapsed = Duration.zero;
+
+  /// 백그라운드에 다녀왔는지. iOS는 앱을 정지시키므로 그동안 소켓이 끊길 수 있다.
+  DateTime? _backgroundedAt;
+  bool _interrupted = false;
 
   static const _analysisSteps = [
     (
@@ -353,6 +379,16 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // 분석은 30~70초가 걸리는데 기본 자동 잠금은 30초다. 그대로 두면
+    // 사용자가 아무것도 안 해도 분석 도중 화면이 꺼져 요청이 끊긴다.
+    WakelockPlus.enable();
+
+    _elapsedTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      if (!mounted) return;
+      setState(() => _elapsed += const Duration(milliseconds: 500));
+    });
+
     _tipPageController = PageController(initialPage: _tipLoopOrigin);
 
     // 팁 자동 슬라이드: 4초마다. 마지막 팁 다음에도 그대로 앞으로 넘어간다
@@ -375,11 +411,43 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _backgroundedAt = DateTime.now();
+    } else if (state == AppLifecycleState.resumed && _backgroundedAt != null) {
+      final away = DateTime.now().difference(_backgroundedAt!);
+      _backgroundedAt = null;
+      // 짧게 다녀온 정도로는 연결이 끊기지 않는다. 오래 비웠으면 알려 준다 —
+      // 조용히 두면 응답 대기 제한(2분)이 다 찰 때까지 멈춘 화면만 보인다.
+      if (away.inSeconds >= 10 && mounted) {
+        setState(() => _interrupted = true);
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    WakelockPlus.disable();
+    _elapsedTimer.cancel();
     _tipTimer.cancel();
     _stepTimer.cancel();
     _tipPageController.dispose();
     super.dispose();
+  }
+
+  /// 결코 100%에 닿지 않는 진행률. 단계로 채우면 12초 만에 끝까지 가서
+  /// 남은 시간 내내 멈춰 보인다. 시간으로 채우되 뒤로 갈수록 느려지게 한다.
+  double get _progress {
+    final seconds = _elapsed.inMilliseconds / 1000.0;
+    return (1 - math.exp(-seconds / 22.0)) * 0.95;
+  }
+
+  String? get _reassurance {
+    if (_elapsed.inSeconds >= 75) return '거의 다 됐어요. 조금만 더 기다려 주세요';
+    if (_elapsed.inSeconds >= 40) return '사진이 커서 조금 더 걸리고 있어요';
+    return null;
   }
 
   @override
@@ -416,7 +484,7 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
                             width: 72,
                             height: 72,
                             child: CircularProgressIndicator(
-                              value: (_currentStep + 1) / _analysisSteps.length,
+                              value: _progress,
                               strokeWidth: 3,
                               backgroundColor: Colors.white24,
                               valueColor: const AlwaysStoppedAnimation(
@@ -450,6 +518,16 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
                         ),
                       ),
                     ),
+                    if (_reassurance != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        _reassurance!,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     // 단계 인디케이터
                     Row(
@@ -475,6 +553,8 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
             ],
           ),
         ),
+
+        if (_interrupted) _InterruptedBanner(onRetry: widget.onRetry),
 
         // 하단: 사진 팁 카드 슬라이드
         Expanded(
@@ -635,6 +715,49 @@ class _PickerBtn extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 백그라운드에 다녀온 뒤 보여 주는 안내.
+///
+/// iOS는 앱을 정지시키므로 그동안 서버와의 연결이 끊겼을 수 있다.
+/// 조용히 두면 응답 대기 제한이 찰 때까지 멈춘 화면만 보인다.
+class _InterruptedBanner extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _InterruptedBanner({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black,
+      padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline,
+              size: 18, color: Colors.white.withValues(alpha: 0.7)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '앱이 잠시 멈춰 있는 동안 분석이 끊겼을 수 있어요',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.75),
+                fontSize: 13,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onRetry,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('다시 시도'),
           ),
         ],
       ),
