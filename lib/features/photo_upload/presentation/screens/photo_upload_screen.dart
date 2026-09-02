@@ -266,6 +266,10 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
   late final PageController _tipPageController;
   late final Timer _tipTimer;
   int _currentTipIndex = 0;
+
+  /// 팁 캐러셀은 끝에서 0번으로 되감지 않고 계속 앞으로 흐른다.
+  /// PageView를 무한으로 열어 두고, 뒤로도 넘길 수 있도록 한참 뒤에서 시작한다.
+  static final int _tipLoopOrigin = _tips.length * 1000;
   int _currentStep = 0;
   late final Timer _stepTimer;
 
@@ -349,16 +353,13 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
   @override
   void initState() {
     super.initState();
-    _tipPageController = PageController();
+    _tipPageController = PageController(initialPage: _tipLoopOrigin);
 
-    // 팁 자동 슬라이드: 4초마다
+    // 팁 자동 슬라이드: 4초마다. 마지막 팁 다음에도 그대로 앞으로 넘어간다
+    // (예전에는 0번으로 animateToPage 해서 전체를 거꾸로 되감았다).
     _tipTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted) return;
-      setState(() {
-        _currentTipIndex = (_currentTipIndex + 1) % _tips.length;
-      });
-      _tipPageController.animateToPage(
-        _currentTipIndex,
+      _tipPageController.nextPage(
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
       );
@@ -499,10 +500,11 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
                 Expanded(
                   child: PageView.builder(
                     controller: _tipPageController,
-                    itemCount: _tips.length,
-                    onPageChanged: (i) => setState(() => _currentTipIndex = i),
+                    // itemCount를 두지 않으면 양방향으로 끝없이 이어진다
+                    onPageChanged: (i) =>
+                        setState(() => _currentTipIndex = i % _tips.length),
                     itemBuilder: (context, index) {
-                      final tip = _tips[index];
+                      final tip = _tips[index % _tips.length];
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Container(
