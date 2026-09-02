@@ -31,8 +31,9 @@ class ScoreIndicator extends StatelessWidget {
             height: size,
             child: CircularProgressIndicator(
               value: score / 100,
-              strokeWidth: 6,
-              backgroundColor: _scoreColor.withValues(alpha: 0.2),
+              strokeWidth: 5,
+              strokeCap: StrokeCap.round,
+              backgroundColor: _scoreColor.withValues(alpha: 0.15),
               valueColor: AlwaysStoppedAnimation<Color>(_scoreColor),
             ),
           ),

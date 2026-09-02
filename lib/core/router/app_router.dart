@@ -16,7 +16,10 @@ import '../../features/analysis/presentation/batch_transform_screen.dart';
 import '../../features/analysis/presentation/transform_screen.dart';
 import '../../features/history/presentation/history_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../providers/auth_provider.dart';
 import '../theme/app_colors.dart';
+import '../widgets/insta_ui.dart';
+import '../widgets/instagram_widgets.dart';
 
 part 'app_router.g.dart';
 
@@ -110,15 +113,15 @@ GoRouter router(Ref ref) {
 }
 
 /// Instagram-style bottom navigation shell
-class _InstaNavShell extends StatefulWidget {
+class _InstaNavShell extends ConsumerStatefulWidget {
   final Widget child;
   const _InstaNavShell({required this.child});
 
   @override
-  State<_InstaNavShell> createState() => _InstaNavShellState();
+  ConsumerState<_InstaNavShell> createState() => _InstaNavShellState();
 }
 
-class _InstaNavShellState extends State<_InstaNavShell> {
+class _InstaNavShellState extends ConsumerState<_InstaNavShell> {
   DateTime? _lastBackPress;
 
   static int _index(BuildContext context) {
@@ -133,6 +136,7 @@ class _InstaNavShellState extends State<_InstaNavShell> {
     final idx = _index(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isHome = idx == 0;
+    final isConnected = ref.watch(instagramAuthProvider).isConnected;
 
     return PopScope(
       canPop: !isHome,
@@ -147,12 +151,7 @@ class _InstaNavShellState extends State<_InstaNavShell> {
           return;
         }
         _lastBackPress = now;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('뒤로 한번 더 누르면 앱이 종료됩니다'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        showInstaToast(context, '뒤로 한번 더 누르면 앱이 종료됩니다');
       },
       child: Scaffold(
         body: widget.child,
@@ -187,26 +186,64 @@ class _InstaNavShellState extends State<_InstaNavShell> {
                 selectedIcon: Icon(Icons.grid_on),
                 label: '기록',
               ),
-              NavigationDestination(
-                icon: ShaderMask(
-                  shaderCallback: (bounds) => AppColors.instagramGradient.createShader(bounds),
-                  child: const Icon(Icons.add_circle_outline, size: 32, color: Colors.white),
-                ),
-                selectedIcon: ShaderMask(
-                  shaderCallback: (bounds) => AppColors.instagramGradient.createShader(bounds),
-                  child: const Icon(Icons.add_circle, size: 32, color: Colors.white),
-                ),
-                label: '',
-              ),
+              // 인스타그램 '만들기' 탭: 모서리 둥근 사각 플러스
               const NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                selectedIcon: Icon(Icons.person),
-                label: '설정',
+                icon: Icon(Icons.add_box_outlined),
+                selectedIcon: Icon(Icons.add_box),
+                label: '만들기',
+              ),
+              // 인스타그램 프로필 탭: 선택 시 스토리 링이 감싼 아바타
+              NavigationDestination(
+                icon: _ProfileTabIcon(selected: false, isConnected: isConnected),
+                selectedIcon:
+                    _ProfileTabIcon(selected: true, isConnected: isConnected),
+                label: '프로필',
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 하단 탭의 프로필 아이콘.
+///
+/// Instagram 연결 시 스토리 링을 두른 아바타로, 미연결 시 사람 아이콘으로 표시한다.
+class _ProfileTabIcon extends StatelessWidget {
+  final bool selected;
+  final bool isConnected;
+
+  const _ProfileTabIcon({required this.selected, required this.isConnected});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isConnected) {
+      return Icon(selected ? Icons.person : Icons.person_outline);
+    }
+
+    final avatar = CircleAvatar(
+      radius: 11,
+      backgroundColor: context.instaDivider,
+      child: Icon(Icons.person, size: 14, color: context.instaSecondary),
+    );
+
+    if (!selected) {
+      return Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: context.instaSecondary, width: 1),
+        ),
+        child: Padding(padding: const EdgeInsets.all(1.5), child: avatar),
+      );
+    }
+
+    return InstagramGradientAvatar(
+      size: 28,
+      borderWidth: 2,
+      child: Padding(padding: const EdgeInsets.all(1), child: avatar),
     );
   }
 }
