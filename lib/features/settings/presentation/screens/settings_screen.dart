@@ -483,15 +483,17 @@ class _ProfileContent extends StatelessWidget {
 
   String _toneLabel(String tone) => switch (tone) {
         'warm' => '따뜻한 톤',
+        'slightly_warm' => '약간 따뜻한 톤',
         'cool' => '차가운 톤',
+        'slightly_cool' => '약간 차가운 톤',
         'neutral' => '중성 톤',
         'mixed' => '혼합 톤',
         _ => tone,
       };
 
   Color _toneColor(String tone) => switch (tone) {
-        'warm' => AppColors.warmColor,
-        'cool' => AppColors.coolColor,
+        'warm' || 'slightly_warm' => AppColors.warmColor,
+        'cool' || 'slightly_cool' => AppColors.coolColor,
         _ => AppColors.primary,
       };
 
@@ -514,6 +516,7 @@ class _ProfileContent extends StatelessWidget {
 
   String _filterLabel(String filter) => switch (filter) {
         'auto' => '자동',
+        'heavy' => '강하게',      // 옛 프로필 호환
         'none' => '무보정',
         'minimal' => '약하게',
         'moderate' => '보통',

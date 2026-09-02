@@ -163,15 +163,27 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
           name: 'StyleAnalysis');
 
       // 3. 각 타입을 공통 형식으로 변환
-      Map<String, dynamic> toItem(Map<String, dynamic> m) => {
-            'text': m['caption'] ?? '',
-            'image_url': m['media_url'] ?? m['thumbnail_url'] ?? '',
-            'timestamp': m['timestamp'] ?? '',
-          };
+      // VIDEO의 media_url은 .mp4다. 썸네일을 먼저 써야 한다 —
+      // 동영상 URL을 넘기면 서버가 받아서 열지 못하고 버리는데,
+      // 그 사이 분석 장수 한도만 까먹는다.
+      Map<String, dynamic> toItem(Map<String, dynamic> m) {
+        final isVideo = m['media_type'] == 'VIDEO';
+        final url = isVideo
+            ? (m['thumbnail_url'] ?? m['media_url'] ?? '')
+            : (m['media_url'] ?? m['thumbnail_url'] ?? '');
+        return {
+          'text': m['caption'] ?? '',
+          'image_url': url,
+          'timestamp': m['timestamp'] ?? '',
+        };
+      }
 
-      final posts = postItems.map(toItem).toList();
-      final feeds = feedItems.map(toItem).toList();
-      final stories = storiesRaw.map(toItem).toList();
+      bool hasImage(Map<String, dynamic> item) =>
+          (item['image_url'] as String).isNotEmpty;
+
+      final posts = postItems.map(toItem).where(hasImage).toList();
+      final feeds = feedItems.map(toItem).where(hasImage).toList();
+      final stories = storiesRaw.map(toItem).where(hasImage).toList();
 
       // 4. analyzeUser 호출 (게시글 + 피드 + 스토리)
       final repo = ref.read(analysisRepositoryDIProvider);
