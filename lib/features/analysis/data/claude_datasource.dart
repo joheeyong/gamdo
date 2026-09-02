@@ -181,6 +181,7 @@ class GamdoAgentDatasource {
     double waistSlim = 0.0,
     double autoWb = 0.0,
     double denoise = 0.0,
+    double backgroundBlur = 0.0,
     Map<String, dynamic>? autoEdits,
     Map<String, dynamic>? regionParams,
     CancelToken? cancelToken,
@@ -195,6 +196,7 @@ class GamdoAgentDatasource {
           'preview': preview,
           'auto_wb': autoWb,
           'denoise': denoise,
+          'background_blur': backgroundBlur,
           // 기하·영역 보정을 함께 보내야 저장본이 미리보기와 같아진다
           'auto_edits': ?autoEdits,
           'region_params': ?regionParams,
