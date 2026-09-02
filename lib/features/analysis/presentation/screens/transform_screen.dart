@@ -7,9 +7,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/services/instagram_share_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
+import '../../../../core/widgets/instagram_widgets.dart';
 import '../../../../core/widgets/score_indicator.dart';
 import '../../domain/photo_analysis.dart';
 import '../providers/transform_provider.dart';
@@ -34,6 +36,11 @@ class TransformScreen extends ConsumerStatefulWidget {
 
 class _TransformScreenState extends ConsumerState<TransformScreen> {
   late File _imageFile;
+  bool _sharing = false;
+
+  /// 인스타그램 설치 여부. 없으면 공유 버튼을 내리고 저장만 안내한다 —
+  /// 누를 수 없는 버튼을 보여 주는 게 가장 나쁜 선택이다.
+  bool _instagramInstalled = false;
   late Map<String, dynamic> _analysis;
 
   @override
@@ -41,6 +48,10 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
     super.initState();
     _imageFile = File(widget.imagePath);
     _analysis = jsonDecode(widget.analysisJson) as Map<String, dynamic>;
+
+    InstagramShareService().isInstalled().then((installed) {
+      if (mounted) setState(() => _instagramInstalled = installed);
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = ref.read(transformProvider);
@@ -59,6 +70,56 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
     if (path != null && mounted) {
       showInstaToast(context, '\uBCC0\uD615\uB41C \uC0AC\uC9C4\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4',
           icon: Icons.check_circle_outline);
+    }
+  }
+
+  /// 변형 결과를 인스타그램으로 넘긴다.
+  ///
+  /// 저장 경로와 같은 파이프라인을 다시 태워 최종 화질로 만든 뒤 넘긴다 —
+  /// 미리보기 바이트는 사용자가 슬라이더를 만졌을 때 최신이 아닐 수 있다.
+  Future<void> _onShareToInstagram({required bool story}) async {
+    if (_sharing) return;
+    setState(() => _sharing = true);
+    try {
+      final bytes = await ref
+          .read(transformProvider.notifier)
+          .renderForExport(_imageFile);
+      if (bytes == null) {
+        if (mounted) {
+          showInstaToast(context, '\uC0AC\uC9C4\uC744 \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694', isError: true);
+        }
+        return;
+      }
+
+      final service = InstagramShareService();
+      final result = story
+          ? await service.shareToStory(bytes)
+          : await service.shareToFeed(bytes);
+      if (!mounted) return;
+
+      switch (result) {
+        case InstagramShareResult.opened:
+          break; // 인스타그램으로 넘어갔다 — 토스트는 방해만 된다
+        case InstagramShareResult.notInstalled:
+          setState(() => _instagramInstalled = false);
+          await _saveInsteadOfSharing('인스타그램이 없어 갤러리에 저장했어요');
+        case InstagramShareResult.failed:
+          await _saveInsteadOfSharing('인스타그램을 열지 못해 갤러리에 저장했어요');
+      }
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  /// 공유가 안 될 때의 퇴로. 사진을 잃지 않도록 갤러리에 남긴다.
+  Future<void> _saveInsteadOfSharing(String message) async {
+    final path =
+        await ref.read(transformProvider.notifier).saveTransformedImage(_imageFile);
+    if (!mounted) return;
+    if (path != null) {
+      showInstaToast(context, message, icon: Icons.download_done_outlined);
+    } else {
+      showInstaToast(context, '\uC0AC\uC9C4\uC744 \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694', isError: true);
     }
   }
 
@@ -202,7 +263,17 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
                       ),
                     ),
 
-                    // ── 2. 적용된 변형 요약 ──
+                    // ── 2. 인스타그램으로 공유 ──
+                    if (transformState.transformedImageBytes != null)
+                      _ShareRow(
+                        busy: _sharing,
+                        instagramInstalled: _instagramInstalled,
+                        onStory: () => _onShareToInstagram(story: true),
+                        onFeed: () => _onShareToInstagram(story: false),
+                        onSave: _onSave,
+                      ),
+
+                    // ── 3. 적용된 변형 요약 ──
                     _AppliedTransformsSummary(
                       params: transformState.params,
                       comment: transformState.paramsComment,
@@ -887,6 +958,77 @@ class _ApplyingSpinner extends StatelessWidget {
           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
         ),
       ),
+    );
+  }
+}
+
+/// 결과 공유 버튼.
+///
+/// 인스타그램이 있으면 스토리·피드로 직행하는 버튼 두 개를, 없으면
+/// 갤러리 저장 버튼 하나를 보여 준다. 누를 수 없는 버튼은 내보이지 않는다.
+class _ShareRow extends StatelessWidget {
+  final bool busy;
+  final bool instagramInstalled;
+  final VoidCallback onStory;
+  final VoidCallback onFeed;
+  final VoidCallback onSave;
+
+  const _ShareRow({
+    required this.busy,
+    required this.instagramInstalled,
+    required this.onStory,
+    required this.onFeed,
+    required this.onSave,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+      child: instagramInstalled
+          ? Row(
+              children: [
+                Expanded(
+                  child: InstagramGradientButton(
+                    height: 44,
+                    isLoading: busy,
+                    onPressed: busy ? null : onStory,
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_circle_outline,
+                            color: Colors.white, size: 18),
+                        SizedBox(width: 6),
+                        Text(
+                          '스토리에 공유',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: InstaSecondaryButton(
+                    label: '피드에 공유',
+                    icon: Icons.grid_on_outlined,
+                    onPressed: busy ? null : onFeed,
+                  ),
+                ),
+              ],
+            )
+          : SizedBox(
+              width: double.infinity,
+              child: InstaSecondaryButton(
+                label: '갤러리에 저장',
+                icon: Icons.download_outlined,
+                onPressed: busy ? null : onSave,
+              ),
+            ),
     );
   }
 }

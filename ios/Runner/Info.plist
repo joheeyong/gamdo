@@ -41,6 +41,13 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>사진 분석을 위해 카메라 접근이 필요합니다.</string>
+	<!-- canOpenURL로 인스타그램 설치를 확인하려면 스킴을 미리 선언해야 한다.
+	     선언하지 않으면 iOS가 항상 false를 돌려준다. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>instagram</string>
+		<string>instagram-stories</string>
+	</array>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>변형된 사진을 갤러리에 저장하기 위해 접근이 필요합니다.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

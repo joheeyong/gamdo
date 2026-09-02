@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 인스타그램에 넘길 임시 사진이 놓이는 경로.
+     Dart의 getTemporaryDirectory()가 가리키는 곳이 cache-path다. -->
+<paths>
+    <cache-path name="ig_share" path="." />
+    <files-path name="ig_files" path="." />
+</paths>

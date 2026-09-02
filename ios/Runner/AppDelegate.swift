@@ -12,5 +12,8 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    // 인스타그램 스토리·피드 딥링크 채널
+    InstagramShare.register(
+      with: engineBridge.pluginRegistry.registrar(forPlugin: "InstagramShare")!)
   }
 }

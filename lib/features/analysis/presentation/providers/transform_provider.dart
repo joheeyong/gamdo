@@ -269,11 +269,19 @@ class TransformNotifier extends Notifier<TransformState> {
         usePreview = base64 != null;
       }
 
+      // 기하·영역 보정과 톤 커브도 함께 보낸다. 빼면 슬라이더를 건드리는 순간
+      // 미리보기가 원본에 슬라이더만 얹은 그림으로 되돌아간다 — 수평 보정과
+      // 크롭이 풀리고 영역별 보정이 사라져, 저장본과 다른 것을 보게 된다.
+      // (e44dee2가 저장 경로에서 고친 것과 같은 문제가 미리보기에 남아 있었다.
+      //  비싼 잡티 제거·피부 스무딩은 서버가 preview 플래그로 걸러낸다.)
       final result = await transformRepo.applyManualTransform(
         imageFile: base64 == null ? imageFile : null,
         imageBase64: base64,
         preview: usePreview,
         params: params,
+        autoEdits: state.autoEdits,
+        regionParams: state.regionParams,
+        toneCurvePoints: state.toneCurvePoints,
         cancelToken: _manualCancelToken,
       );
 
@@ -311,28 +319,38 @@ class TransformNotifier extends Notifier<TransformState> {
     }
   }
 
-  Future<String?> saveTransformedImage(File imageFile) async {
-    state = state.copyWith(status: TransformStatus.saving);
-
+  /// 최종 화질로 변형 결과를 만든다 (저장·공유가 공유하는 경로).
+  ///
+  /// 원본에 현재 슬라이더 값 + 기하·영역 보정을 다시 태운다. 미리보기 바이트는
+  /// 사용자가 슬라이더를 만졌을 때 최신이 아닐 수 있어 그대로 쓰지 않는다.
+  Future<Uint8List?> renderForExport(File imageFile) async {
     try {
       final transformRepo = ref.read(transformRepositoryProvider);
-      final params = state.params;
-
       final fullBase64 = state.cachedFullBase64;
       final result = await transformRepo.applyManualTransform(
         imageFile: fullBase64 == null ? imageFile : null,
         imageBase64: fullBase64,
         preview: false,
-        params: params,
+        params: state.params,
         autoEdits: state.autoEdits,
         regionParams: state.regionParams,
         toneCurvePoints: state.toneCurvePoints,
       );
-
       final imageB64 = result['image_base64'] as String?;
-      final bytes = imageB64 != null
+      return imageB64 != null
           ? base64Decode(imageB64)
           : state.transformedImageBytes;
+    } catch (e) {
+      developer.log('renderForExport failed: $e', name: 'Transform');
+      return state.transformedImageBytes;
+    }
+  }
+
+  Future<String?> saveTransformedImage(File imageFile) async {
+    state = state.copyWith(status: TransformStatus.saving);
+
+    try {
+      final bytes = await renderForExport(imageFile);
 
       if (bytes == null) {
         state = state.copyWith(
