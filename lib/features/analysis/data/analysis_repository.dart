@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -8,7 +9,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/database.dart';
 import '../../../core/services/image_service.dart';
-import '../domain/photo_analysis.dart';
 import 'claude_datasource.dart';
 
 part 'analysis_repository.g.dart';
@@ -169,8 +169,14 @@ class AnalysisRepository {
   }
 
   /// 슬라이더 값으로 수동 변형 — 원본 이미지에서 항상 새로 적용
+  ///
+  /// [imageBase64]가 전달되면 processImage를 스킵하고 캐시된 base64를 직접 사용.
+  /// [preview]가 true이면 서버에서 무거운 reshape/blemish 파이프라인을 스킵.
+  /// [cancelToken]이 전달되면 진행 중인 요청을 취소할 수 있음.
   Future<Map<String, dynamic>> applyTransform({
-    required File imageFile,
+    File? imageFile,
+    String? imageBase64,
+    bool preview = false,
     double brightness = 0.0,
     double contrast = 0.0,
     double clarity = 0.0,
@@ -197,10 +203,15 @@ class AnalysisRepository {
     double legStretch = 0.0,
     double shoulderWidth = 0.0,
     double waistSlim = 0.0,
+    CancelToken? cancelToken,
   }) async {
-    final processed = await _imageService.processImage(imageFile);
+    // 캐시된 base64가 있으면 processImage 스킵
+    final base64 = imageBase64 ??
+        (await _imageService.processImage(imageFile!)).base64;
+
     return _datasource.applyTransform(
-      imageBase64: processed.base64,
+      imageBase64: base64,
+      preview: preview,
       brightness: brightness,
       contrast: contrast,
       clarity: clarity,
@@ -227,6 +238,7 @@ class AnalysisRepository {
       legStretch: legStretch,
       shoulderWidth: shoulderWidth,
       waistSlim: waistSlim,
+      cancelToken: cancelToken,
     );
   }
 }

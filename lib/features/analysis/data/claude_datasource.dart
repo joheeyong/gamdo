@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -89,6 +87,7 @@ class GamdoAgentDatasource {
     required Map<String, dynamic> styleProfile,
     String userId = '',
     String mediaType = 'image/jpeg',
+    CancelToken? cancelToken,
   }) async {
     final baseUrl = await _getBaseUrl();
 
@@ -105,10 +104,12 @@ class GamdoAgentDatasource {
           sendTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(minutes: 5),
         ),
+        cancelToken: cancelToken,
       );
 
       return _handleTransformResponse(response);
     } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) rethrow;
       throw ApiException(
         message: e.message ?? 'Network error',
         statusCode: e.response?.statusCode,
@@ -148,8 +149,10 @@ class GamdoAgentDatasource {
   }
 
   /// 슬라이더 값으로 수동 변형 — 원본에서 항상 새로 적용
+  /// [cancelToken]이 전달되면 요청 취소에 활용 (슬라이더 디바운스 시 이전 요청 취소)
   Future<Map<String, dynamic>> applyTransform({
     required String imageBase64,
+    bool preview = false,
     double brightness = 0.0,
     double contrast = 0.0,
     double clarity = 0.0,
@@ -176,6 +179,7 @@ class GamdoAgentDatasource {
     double legStretch = 0.0,
     double shoulderWidth = 0.0,
     double waistSlim = 0.0,
+    CancelToken? cancelToken,
   }) async {
     final baseUrl = await _getBaseUrl();
 
@@ -184,6 +188,7 @@ class GamdoAgentDatasource {
         '$baseUrl/api/apply-transform',
         data: {
           'image_base64': imageBase64,
+          'preview': preview,
           'brightness': brightness,
           'contrast': contrast,
           'clarity': clarity,
@@ -215,10 +220,13 @@ class GamdoAgentDatasource {
           sendTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(minutes: 2),
         ),
+        cancelToken: cancelToken,
       );
 
       return _handleTransformResponse(response);
     } on DioException catch (e) {
+      // 요청 취소는 정상 흐름이므로 그대로 rethrow — 호출부에서 처리
+      if (e.type == DioExceptionType.cancel) rethrow;
       throw ApiException(
         message: e.message ?? 'Network error',
         statusCode: e.response?.statusCode,

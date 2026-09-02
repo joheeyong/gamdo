@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
-import '../constants/instagram_constants.dart';
+import '../../features/auth/data/instagram_constants.dart';
 
 /// Instagram OAuth + Media 조회 서비스.
 ///

@@ -4,7 +4,7 @@ import 'package:gamdo/l10n/app_localizations.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
-import 'core/providers/theme_provider.dart';
+import 'features/settings/presentation/providers/theme_provider.dart';
 
 class GamdoApp extends ConsumerWidget {
   const GamdoApp({super.key});

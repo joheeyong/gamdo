@@ -95,4 +95,28 @@ class ImageService {
     final base64String = await imageToBase64(compressed);
     return (file: compressed, base64: base64String);
   }
+
+  /// 슬라이더 미리보기용 저해상도 이미지 처리 (800px, JPEG 70%)
+  Future<String> processPreviewImage(File originalFile) async {
+    final dir = await getTemporaryDirectory();
+    final targetPath = p.join(
+      dir.path,
+      'preview_${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
+
+    final result = await FlutterImageCompress.compressAndGetFile(
+      originalFile.absolute.path,
+      targetPath,
+      quality: ApiConstants.previewJpegQuality,
+      minWidth: ApiConstants.previewImageSize,
+      minHeight: ApiConstants.previewImageSize,
+    );
+
+    if (result == null) {
+      // 압축 실패 시 원본으로 base64 변환
+      return imageToBase64(originalFile);
+    }
+
+    return imageToBase64(File(result.path));
+  }
 }

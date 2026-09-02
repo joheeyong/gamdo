@@ -45,7 +45,8 @@ class FirebaseService {
       final snapshot = await _db.child('users/$userId').get();
       if (!snapshot.exists || snapshot.value == null) return null;
 
-      final data = Map<String, dynamic>.from(snapshot.value as Map);
+      // RTDB는 중첩 Map을 Map<Object?, Object?>로 반환하므로 재귀 변환 필요.
+      final data = _deepCast(snapshot.value) as Map<String, dynamic>;
       developer.log('Style profile loaded for user $userId',
           name: 'FirebaseService');
       return data;
@@ -151,4 +152,19 @@ class FirebaseService {
           name: 'FirebaseService');
     }
   }
+}
+
+/// RTDB가 돌려주는 `Map<Object?, Object?>`/`List<Object?>` 트리를
+/// `Map<String, dynamic>`/`List<dynamic>`로 재귀 변환한다.
+dynamic _deepCast(Object? value) {
+  if (value is Map) {
+    return <String, dynamic>{
+      for (final entry in value.entries)
+        entry.key.toString(): _deepCast(entry.value),
+    };
+  }
+  if (value is List) {
+    return value.map(_deepCast).toList();
+  }
+  return value;
 }

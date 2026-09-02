@@ -1,8 +1,2 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/services/database.dart';
-
-final recentAnalysesProvider = StreamProvider<List<AnalysisRecord>>((ref) {
-  final db = ref.watch(appDatabaseProvider);
-  return db.watchAllAnalyses();
-});
+// Re-export from new location for backward compatibility.
+export '../presentation/providers/home_provider.dart';

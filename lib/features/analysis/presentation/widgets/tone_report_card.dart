@@ -58,7 +58,6 @@ class ToneReportCard extends StatelessWidget {
             Text(
               toneReport.narrative,
               style: context.textTheme.bodyMedium?.copyWith(
-                height: 1.8,
                 color: context.colorScheme.onSurface.withValues(alpha: 0.8),
               ),
             ),

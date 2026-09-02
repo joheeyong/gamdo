@@ -13,6 +13,7 @@ Dio dio(Ref ref) {
     receiveTimeout: const Duration(minutes: 5),
     headers: {
       'Content-Type': 'application/json',
+      'Accept-Encoding': 'gzip',
     },
   ));
 

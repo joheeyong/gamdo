@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../../../../core/widgets/insta_ui.dart';
 import '../../../../core/extensions/context_extensions.dart';
 
 /// A card displaying hashtags with a "copy all" button.
@@ -93,16 +95,7 @@ class _CopyButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       onTap: () {
         Clipboard.setData(ClipboardData(text: text));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('복사되었습니다'),
-            duration: const Duration(seconds: 1),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
+        showInstaToast(context, '복사되었습니다', icon: Icons.check);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

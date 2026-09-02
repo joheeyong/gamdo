@@ -51,6 +51,9 @@ dependencies:
   firebase_core: any
   firebase_database: any
 
+  # Share
+  share_plus: any
+
   # Utils
   path_provider: any
   shared_preferences: any

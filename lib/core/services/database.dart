@@ -65,6 +65,28 @@ class AppDatabase extends _$AppDatabase {
     return (select(analysisRecords)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
   }
+
+  /// 점수순 정렬 스트림.
+  Stream<List<AnalysisRecord>> watchAllAnalysesByScore({bool ascending = false}) {
+    return (select(analysisRecords)
+          ..orderBy([(t) => ascending
+              ? OrderingTerm.asc(t.overallScore)
+              : OrderingTerm.desc(t.overallScore)]))
+        .watch();
+  }
+
+  /// 스타일 필터 + 점수순 정렬 스트림.
+  Stream<List<AnalysisRecord>> watchByStyleSortedByScore(
+    String style, {
+    bool ascending = false,
+  }) {
+    return (select(analysisRecords)
+          ..where((t) => t.styleCategory.equals(style))
+          ..orderBy([(t) => ascending
+              ? OrderingTerm.asc(t.overallScore)
+              : OrderingTerm.desc(t.overallScore)]))
+        .watch();
+  }
 }
 
 LazyDatabase _openConnection() {
