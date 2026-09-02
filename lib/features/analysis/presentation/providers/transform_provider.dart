@@ -41,6 +41,13 @@ class TransformState {
   /// 서버가 계산한 "왜 이렇게 보정했는지" 한 문장.
   final String? paramsComment;
 
+  /// 수평 보정·크롭 등 기하 편집. 저장 시 그대로 되돌려 보내야
+  /// 저장본이 미리보기와 같아진다.
+  final Map<String, dynamic>? autoEdits;
+
+  /// 하늘/얼굴/배경 영역별 보정. 같은 이유로 보관한다.
+  final Map<String, dynamic>? regionParams;
+
   const TransformState({
     this.status = TransformStatus.idle,
     this.params = const TransformParams(),
@@ -51,6 +58,8 @@ class TransformState {
     this.cachedFullBase64,
     this.cachedPreviewBase64,
     this.paramsComment,
+    this.autoEdits,
+    this.regionParams,
   });
 
   TransformState copyWith({
@@ -63,6 +72,8 @@ class TransformState {
     String? cachedFullBase64,
     String? cachedPreviewBase64,
     String? paramsComment,
+    Map<String, dynamic>? autoEdits,
+    Map<String, dynamic>? regionParams,
   }) {
     return TransformState(
       status: status ?? this.status,
@@ -74,6 +85,8 @@ class TransformState {
       cachedFullBase64: cachedFullBase64 ?? this.cachedFullBase64,
       cachedPreviewBase64: cachedPreviewBase64 ?? this.cachedPreviewBase64,
       paramsComment: paramsComment ?? this.paramsComment,
+      autoEdits: autoEdits ?? this.autoEdits,
+      regionParams: regionParams ?? this.regionParams,
     );
   }
 }
@@ -162,6 +175,8 @@ class TransformNotifier extends Notifier<TransformState> {
       final imageB64 = result.fullResult['image_base64'] as String?;
       final paramsMap = result.fullResult['params'] as Map<String, dynamic>?;
       final comment = result.fullResult['params_comment'] as String?;
+      final analysisMap =
+          result.fullResult['analysis'] as Map<String, dynamic>?;
 
       if (imageB64 == null) {
         state = state.copyWith(
@@ -181,6 +196,8 @@ class TransformNotifier extends Notifier<TransformState> {
         originalParams: aiParams,
         transformedImageBytes: base64Decode(imageB64),
         paramsComment: comment,
+        autoEdits: analysisMap?['autoEdits'] as Map<String, dynamic>?,
+        regionParams: analysisMap?['regionParams'] as Map<String, dynamic>?,
       );
 
       return (analysisJson: result.analysisJson, imagePath: result.imagePath);
@@ -294,6 +311,8 @@ class TransformNotifier extends Notifier<TransformState> {
         imageBase64: fullBase64,
         preview: false,
         params: params,
+        autoEdits: state.autoEdits,
+        regionParams: state.regionParams,
       );
 
       final imageB64 = result['image_base64'] as String?;

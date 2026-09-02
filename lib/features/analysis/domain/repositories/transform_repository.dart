@@ -31,6 +31,8 @@ abstract class TransformRepository {
     String? imageBase64,
     bool preview,
     required TransformParams params,
+    Map<String, dynamic>? autoEdits,
+    Map<String, dynamic>? regionParams,
     CancelToken? cancelToken,
   });
 }

@@ -49,6 +49,8 @@ class TransformRepositoryImpl implements TransformRepository {
     String? imageBase64,
     bool preview = false,
     required TransformParams params,
+    Map<String, dynamic>? autoEdits,
+    Map<String, dynamic>? regionParams,
     CancelToken? cancelToken,
   }) async {
     final base64 = imageBase64 ??
@@ -57,6 +59,8 @@ class TransformRepositoryImpl implements TransformRepository {
     return _datasource.applyTransform(
       imageBase64: base64,
       preview: preview,
+      autoEdits: autoEdits,
+      regionParams: regionParams,
       brightness: params.brightness,
       contrast: params.contrast,
       clarity: params.clarity,

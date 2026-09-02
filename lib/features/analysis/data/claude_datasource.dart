@@ -179,6 +179,10 @@ class GamdoAgentDatasource {
     double legStretch = 0.0,
     double shoulderWidth = 0.0,
     double waistSlim = 0.0,
+    double autoWb = 0.0,
+    double denoise = 0.0,
+    Map<String, dynamic>? autoEdits,
+    Map<String, dynamic>? regionParams,
     CancelToken? cancelToken,
   }) async {
     final baseUrl = await _getBaseUrl();
@@ -189,6 +193,11 @@ class GamdoAgentDatasource {
         data: {
           'image_base64': imageBase64,
           'preview': preview,
+          'auto_wb': autoWb,
+          'denoise': denoise,
+          // 기하·영역 보정을 함께 보내야 저장본이 미리보기와 같아진다
+          'auto_edits': ?autoEdits,
+          'region_params': ?regionParams,
           'brightness': brightness,
           'contrast': contrast,
           'clarity': clarity,
