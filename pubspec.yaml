@@ -46,10 +46,12 @@ dependencies:
 
   # Auth
   flutter_web_auth_2: any
+  flutter_secure_storage: ^11.2.0
 
   # Firebase
   firebase_core: any
   firebase_database: any
+  firebase_auth: ^6.7.0
 
   # Share
   share_plus: any

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/instagram_service.dart';
+import '../../../../core/services/session_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../domain/entities/instagram_auth.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -13,12 +14,15 @@ import '../../domain/repositories/auth_repository.dart';
 class AuthRepositoryImpl implements AuthRepository {
   final Dio _dio;
   final StorageService _storage;
+  final SessionService _session;
 
   AuthRepositoryImpl({
     required Dio dio,
     required StorageService storage,
+    SessionService? session,
   })  : _dio = dio,
-        _storage = storage;
+        _storage = storage,
+        _session = session ?? SessionService(storage: storage);
 
   @override
   Future<InstagramAuth> restoreSession() async {
@@ -38,10 +42,28 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<SessionValidation> validateSession() async {
+    final token = await _storage.getInstagramToken();
+    if (token == null || token.isEmpty) return SessionValidation.loggedOut;
+
+    // 세션이 없거나 7일 이내 만료면 재발급. 구버전 서버(404)·오프라인은 조용히 통과.
+    final result = await _session.refreshIfNeeded();
+    if (result == SessionRefreshResult.instagramTokenInvalid) {
+      return SessionValidation.loggedOut;
+    }
+
+    final userId = await _storage.getInstagramUserId();
+    final signedIn = await _session.signInFirebase(userId);
+    return signedIn
+        ? SessionValidation.firebaseSignedIn
+        : SessionValidation.connected;
+  }
+
+  @override
   Future<InstagramAuth> login() async {
     final prefs = await SharedPreferences.getInstance();
     final proxyUrl =
-        prefs.getString('proxy_url') ?? ApiConstants.defaultProxyUrl;
+        ApiConstants.resolveProxyUrl(prefs.getString('proxy_url'));
 
     final service = InstagramService(
       dio: _dio,
@@ -72,6 +94,15 @@ class AuthRepositoryImpl implements AuthRepository {
       await _storage.setInstagramUsername(username);
     }
 
+    // 5. gamdo-agent 세션 저장 (세션 미설정/구버전 서버면 필드가 없다)
+    //    → 없으면 /api/session으로 한 번 시도. 이어서 Firebase Auth 로그인.
+    //    모두 실패해도 로그인 자체는 성공으로 둔다.
+    await _storage.clearSession();
+    if (!await _session.saveSessionFrom(tokenData)) {
+      await _session.refreshSession();
+    }
+    await _session.signInFirebase(userId);
+
     return InstagramAuth(
       isConnected: true,
       accessToken: accessToken,
@@ -83,5 +114,6 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> logout() async {
     await _storage.clearInstagram();
+    await SessionService.signOutFirebase();
   }
 }
