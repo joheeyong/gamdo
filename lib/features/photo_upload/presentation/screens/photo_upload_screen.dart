@@ -62,15 +62,22 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
       if (!mounted) return;
 
       if (result != null) {
-        // 분석 & 변형 완료 → 변형 화면으로 이동 (이미 변형된 이미지 포함)
-        context.push(
+        // 분석 & 변형 완료 → 변형 화면으로 이동 (이미 변형된 이미지 포함).
+        //
+        // push가 아니라 pushReplacement인 이유: 분석이 끝난 업로드 화면은
+        // 돌아갈 이유가 없는 중간 단계다. 스택에 남겨 두면 변형 화면에서
+        // 뒤로 가면 "분석 완료된 사진이 그대로 놓인 업로드 화면"이 다시
+        // 나오고, 거기서 또 뒤로 가야 홈에 도착한다.
+        context.pushReplacement(
           AppRoutes.transform,
           extra: {
             'analysisJson': result.analysisJson,
             'imagePath': result.imagePath,
           },
         );
-      } else {
+      } else if (generation == _analysisGeneration) {
+        // 재시도가 이전 요청을 취소하면 이전 호출도 null로 돌아온다.
+        // 그건 실패가 아니므로 마지막 요청의 결과일 때만 알린다.
         final state = ref.read(transformProvider);
         _showError(state.errorMessage);
       }
@@ -112,10 +119,10 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final transformState = ref.watch(transformProvider);
-    final isLoading =
-        transformState.status == TransformStatus.loadingAutoTransform ||
-        _isProcessing;
+    // 이 화면이 시작한 분석만 본다. transformProvider는 전역이라 다른 화면
+    // (예: 변형 화면의 재분석)이나 이전 세션의 상태가 섞이면, 사진을 고르기도
+    // 전에 대기 화면이 떠 _selectedImage! 에서 터졌다.
+    final isLoading = _isProcessing && _selectedImage != null;
 
     return PopScope(
       canPop: !isLoading,

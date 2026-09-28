@@ -13,6 +13,15 @@ class TransformParams {
   final double vignette;
   final double sharpness;
   final double grain;
+  // ── 촬영 결함 교정 (서버 param_engine이 산출, 슬라이더 없음) ──
+  // 저장·공유 시 다시 보내지 않으면 재렌더링된 사진에서 화이트밸런스·노이즈
+  // 제거·배경 흐림이 빠져 화면의 After와 달라진다.
+  /// 자동 화이트밸런스 강도 (0~1)
+  final double autoWb;
+  /// 노이즈 제거 강도 (0~1)
+  final double denoise;
+  /// 배경 흐림 강도 (0~1, 인물에서만 적용)
+  final double backgroundBlur;
   final String toneCurvePreset;
   final double toneCurveStrength;
   final double splitShadowHue;
@@ -42,6 +51,9 @@ class TransformParams {
     this.vignette = 0.0,
     this.sharpness = 0.0,
     this.grain = 0.0,
+    this.autoWb = 0.0,
+    this.denoise = 0.0,
+    this.backgroundBlur = 0.0,
     this.toneCurvePreset = 'linear',
     this.toneCurveStrength = 0.0,
     this.splitShadowHue = 0.0,
@@ -71,6 +83,9 @@ class TransformParams {
     double? vignette,
     double? sharpness,
     double? grain,
+    double? autoWb,
+    double? denoise,
+    double? backgroundBlur,
     String? toneCurvePreset,
     double? toneCurveStrength,
     double? splitShadowHue,
@@ -99,6 +114,9 @@ class TransformParams {
       vignette: vignette ?? this.vignette,
       sharpness: sharpness ?? this.sharpness,
       grain: grain ?? this.grain,
+      autoWb: autoWb ?? this.autoWb,
+      denoise: denoise ?? this.denoise,
+      backgroundBlur: backgroundBlur ?? this.backgroundBlur,
       toneCurvePreset: toneCurvePreset ?? this.toneCurvePreset,
       toneCurveStrength: toneCurveStrength ?? this.toneCurveStrength,
       splitShadowHue: splitShadowHue ?? this.splitShadowHue,
@@ -202,6 +220,9 @@ class TransformParams {
       vignette: (json['vignette'] as num?)?.toDouble() ?? 0.0,
       sharpness: (json['sharpness'] as num?)?.toDouble() ?? 0.0,
       grain: (json['grain'] as num?)?.toDouble() ?? 0.0,
+      autoWb: _unit(json['auto_wb'] ?? json['autoWb']),
+      denoise: _unit(json['denoise']),
+      backgroundBlur: _unit(json['background_blur'] ?? json['backgroundBlur']),
       toneCurvePreset: tcPreset,
       toneCurveStrength: tcStrength,
       splitShadowHue: shHue,
@@ -218,6 +239,10 @@ class TransformParams {
     );
   }
 
+  /// 서버 스키마(ge=0, le=1)를 벗어난 값이 422로 저장을 막지 않도록 0~1로 묶는다.
+  static double _unit(Object? raw) =>
+      ((raw as num?)?.toDouble() ?? 0.0).clamp(0.0, 1.0).toDouble();
+
   Map<String, double> toMap() => {
         'brightness': brightness,
         'contrast': contrast,
@@ -232,6 +257,9 @@ class TransformParams {
         'vignette': vignette,
         'sharpness': sharpness,
         'grain': grain,
+        'autoWb': autoWb,
+        'denoise': denoise,
+        'backgroundBlur': backgroundBlur,
         'toneCurveStrength': toneCurveStrength,
         'splitShadowStrength': splitShadowStrength,
         'splitHighlightStrength': splitHighlightStrength,

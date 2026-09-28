@@ -1,0 +1,266 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:gamdo/core/services/image_service.dart';
+import 'package:gamdo/features/analysis/di/analysis_providers.dart';
+import 'package:gamdo/features/analysis/domain/repositories/analysis_repository.dart';
+import 'package:gamdo/features/analysis/domain/repositories/transform_repository.dart';
+import 'package:gamdo/features/analysis/presentation/providers/transform_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+typedef _Result = ({
+  String analysisJson,
+  String imagePath,
+  Map<String, dynamic> fullResult
+});
+
+class _FakeImageService extends ImageService {
+  @override
+  Future<({File file, String base64})> processImage(File originalFile) async =>
+      (file: originalFile, base64: 'FULL');
+
+  @override
+  Future<String> processPreviewImage(File originalFile) async => 'PREVIEW';
+}
+
+/// 호출마다 [next]가 돌려주는 Future를 결과로 쓴다.
+class _FakeAnalysisRepository implements AnalysisRepository {
+  Future<_Result> Function(File imageFile, CancelToken? token) next =
+      (f, t) async => throw UnimplementedError();
+
+  @override
+  Future<_Result> analyzeAndTransform({
+    required File imageFile,
+    Map<String, dynamic>? styleProfile,
+    String userId = '',
+    bool reshapeEnabled = false,
+    CancelToken? cancelToken,
+  }) =>
+      next(imageFile, cancelToken);
+
+  @override
+  Future<AnalyzeRecordResult> analyzeAndTransformRecord({
+    required File imageFile,
+    Map<String, dynamic>? styleProfile,
+    String userId = '',
+    bool reshapeEnabled = false,
+    CancelToken? cancelToken,
+    int? recordId,
+  }) async {
+    final r = await next(imageFile, cancelToken);
+    return (
+      recordId: recordId ?? 1,
+      analysisJson: r.analysisJson,
+      imagePath: r.imagePath,
+      fullResult: r.fullResult,
+    );
+  }
+
+  @override
+  Future<SavedAnalysis?> loadRecord(int recordId) async => null;
+
+  @override
+  Future<List<String>> fetchReferenceImages(String userId) async => [];
+
+  @override
+  Future<Map<String, dynamic>> analyzeUser({
+    List<Map<String, dynamic>> posts = const [],
+    List<Map<String, dynamic>> feeds = const [],
+    List<Map<String, dynamic>> stories = const [],
+    String userId = '',
+  }) async =>
+      {};
+}
+
+class _FakeTransformRepository implements TransformRepository {
+  TransformParams? lastParams;
+  bool fail = false;
+
+  @override
+  Future<Map<String, dynamic>> applyManualTransform({
+    File? imageFile,
+    String? imageBase64,
+    bool preview = false,
+    required TransformParams params,
+    Map<String, dynamic>? autoEdits,
+    Map<String, dynamic>? regionParams,
+    List<dynamic>? toneCurvePoints,
+    CancelToken? cancelToken,
+  }) async {
+    lastParams = params;
+    if (fail) throw Exception('network');
+    return {'success': true, 'image_base64': base64Encode([9, 9, 9])};
+  }
+
+  @override
+  Future<TransformResult> autoTransform({
+    required File imageFile,
+    required Map<String, dynamic> analysis,
+    Map<String, dynamic>? styleProfile,
+  }) =>
+      throw UnimplementedError();
+}
+
+_Result _result(String savedPath,
+        {Map<String, dynamic>? params,
+        Map<String, dynamic>? analysis,
+        String? comment,
+        List<int> bytes = const [1, 2, 3]}) =>
+    (
+      analysisJson: jsonEncode(analysis ?? {}),
+      imagePath: savedPath,
+      fullResult: {
+        'success': true,
+        'image_base64': base64Encode(bytes),
+        'params': params ?? <String, dynamic>{},
+        'params_comment': ?comment,
+        'analysis': analysis ?? <String, dynamic>{},
+      },
+    );
+
+void main() {
+  late _FakeAnalysisRepository analysisRepo;
+  late _FakeTransformRepository transformRepo;
+  late ProviderContainer container;
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    analysisRepo = _FakeAnalysisRepository();
+    transformRepo = _FakeTransformRepository();
+    container = ProviderContainer(overrides: [
+      analysisRepositoryDIProvider.overrideWithValue(analysisRepo),
+      transformRepositoryProvider.overrideWithValue(transformRepo),
+      imageServiceProvider.overrideWithValue(_FakeImageService()),
+    ]);
+  });
+
+  tearDown(() => container.dispose());
+
+  TransformNotifier notifier() => container.read(transformProvider.notifier);
+  TransformState state() => container.read(transformProvider);
+
+  test('새 사진을 분석하면 이전 사진의 영역 보정·톤 커브·설명이 남지 않는다', () async {
+    analysisRepo.next = (f, t) async => _result(
+          '/saved/a.jpg',
+          params: {
+            'brightness': 0.2,
+            'tone_curve_points': [
+              [0.0, 0.1],
+              [1.0, 0.9],
+            ],
+          },
+          analysis: {
+            'regionParams': {'sky': <String, dynamic>{}},
+            'autoEdits': {'straighten': 1.0},
+          },
+          comment: '이전 사진 설명',
+        );
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    expect(state().regionParams, isNotNull);
+    expect(state().toneCurvePoints, isNotNull);
+    expect(state().paramsComment, '이전 사진 설명');
+
+    analysisRepo.next = (f, t) async => _result('/saved/b.jpg');
+    await notifier().analyzeAndTransform(File('/picked/b.jpg'));
+
+    expect(state().status, TransformStatus.ready);
+    expect(state().regionParams, isNull);
+    expect(state().autoEdits, isNull);
+    expect(state().toneCurvePoints, isNull);
+    expect(state().paramsComment, isNull);
+    expect(state().params.brightness, 0.0);
+  });
+
+  test('결과가 어떤 사진의 것인지 원본·저장 경로로 판별한다', () async {
+    analysisRepo.next = (f, t) async => _result('/saved/a.jpg');
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+
+    expect(state().belongsTo('/picked/a.jpg'), isTrue);
+    expect(state().belongsTo('/saved/a.jpg'), isTrue);
+    expect(state().belongsTo('/saved/other.jpg'), isFalse);
+    expect(const TransformState().belongsTo('/saved/a.jpg'), isFalse);
+  });
+
+  test('분석을 취소하면 idle로 돌아가고, 늦게 온 응답이 상태를 덮지 않는다', () async {
+    final completer = Completer<_Result>();
+    CancelToken? seen;
+    analysisRepo.next = (f, t) {
+      seen = t;
+      return completer.future;
+    };
+
+    final future = notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    await Future<void>.delayed(Duration.zero);
+    expect(state().status, TransformStatus.loadingAutoTransform);
+
+    notifier().cancelAutoTransform();
+    expect(state().status, TransformStatus.idle);
+    expect(seen?.isCancelled, isTrue);
+
+    completer.complete(_result('/saved/a.jpg'));
+    expect(await future, isNull);
+    expect(state().status, TransformStatus.idle);
+    expect(state().transformedImageBytes, isNull);
+  });
+
+  test('재시도에 밀린 이전 요청의 실패가 새 요청의 로딩 상태를 덮지 않는다', () async {
+    final first = Completer<_Result>();
+    final second = Completer<_Result>();
+    var call = 0;
+    analysisRepo.next = (f, t) => (++call == 1 ? first : second).future;
+
+    final f1 = notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    await Future<void>.delayed(Duration.zero);
+    final f2 = notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    await Future<void>.delayed(Duration.zero);
+
+    first.completeError(Exception('old request failed'));
+    expect(await f1, isNull);
+    expect(state().status, TransformStatus.loadingAutoTransform);
+    expect(state().errorMessage, isNull);
+
+    second.complete(_result('/saved/a.jpg'));
+    expect(await f2, isNotNull);
+    expect(state().status, TransformStatus.ready);
+  });
+
+  test('저장용 재렌더링에 auto_wb/denoise/background_blur가 실린다', () async {
+    analysisRepo.next = (f, t) async => _result('/saved/a.jpg', params: {
+          'auto_wb': 0.6,
+          'denoise': 0.4,
+          'background_blur': 0.25,
+        });
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+
+    final bytes = await notifier().renderForExport(File('/picked/a.jpg'));
+    expect(bytes, Uint8List.fromList([9, 9, 9]));
+    expect(transformRepo.lastParams?.autoWb, 0.6);
+    expect(transformRepo.lastParams?.denoise, 0.4);
+    expect(transformRepo.lastParams?.backgroundBlur, 0.25);
+  });
+
+  test('재렌더링 실패 시 화면의 After가 최종 화질이면 그걸 쓴다', () async {
+    analysisRepo.next = (f, t) async => _result('/saved/a.jpg', bytes: [7, 7]);
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+
+    transformRepo.fail = true;
+    final bytes = await notifier().renderForExport(File('/picked/a.jpg'));
+    expect(bytes, Uint8List.fromList([7, 7]));
+  });
+
+  test('미리보기 바이트뿐이면 재렌더링 실패를 null로 알린다', () async {
+    analysisRepo.next = (f, t) async => _result('/saved/a.jpg');
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    // 슬라이더 미리보기로 바이트가 저해상도로 바뀐 상태
+    await notifier()
+        .applyManual(File('/picked/a.jpg'), state().params.copyWith(brightness: 0.3));
+
+    transformRepo.fail = true;
+    expect(await notifier().renderForExport(File('/picked/a.jpg')), isNull);
+  });
+}

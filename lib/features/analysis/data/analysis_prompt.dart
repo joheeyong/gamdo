@@ -20,8 +20,6 @@ class AnalysisPrompt {
   "compositionAnalysis": {
     "primaryTechnique": "삼분법 | 중앙배치 | 대각선 | 프레임 인 프레임 | 리딩라인 | 대칭 | 미니멀",
     "balanceScore": 0.0~1.0,
-    "strengths": ["장점1", "장점2"],
-    "improvements": ["개선점1", "개선점2"]
   },
   "toneReport": {
     "overallMood": "한국어 분위기 설명 (예: 차분한, 활기찬, 몽환적인)",
@@ -38,7 +36,6 @@ class AnalysisPrompt {
     "보정 팁 2 (한국어)",
     "보정 팁 3 (한국어)"
   ],
-  "overallScore": 0~100
 }
 ''';
 }

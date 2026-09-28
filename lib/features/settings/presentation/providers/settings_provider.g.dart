@@ -33,7 +33,7 @@ final class ProxyUrlSettingProvider
   ProxyUrlSetting create() => ProxyUrlSetting();
 }
 
-String _$proxyUrlSettingHash() => r'9914b79d9b3d61d912d74781c9e7213a4235ac16';
+String _$proxyUrlSettingHash() => r'a91ebe9139b39da98093f7be296144d2fa7ff890';
 
 abstract class _$ProxyUrlSetting extends $AsyncNotifier<String> {
   FutureOr<String> build();
@@ -77,7 +77,7 @@ final class AppTokenSettingProvider
   AppTokenSetting create() => AppTokenSetting();
 }
 
-String _$appTokenSettingHash() => r'd649833432ae01c86b8fcc764eac73709010ec13';
+String _$appTokenSettingHash() => r'00961f808178a4d1fb4c0f8ba9b05f72e36e4eca';
 
 abstract class _$AppTokenSetting extends $AsyncNotifier<String> {
   FutureOr<String> build();
@@ -122,7 +122,7 @@ final class ReshapeEnabledSettingProvider
 }
 
 String _$reshapeEnabledSettingHash() =>
-    r'bc8d20b0fb6d00daff75af4020b7ec181847e8ca';
+    r'9deff7defb7796dbf229e18d9368e36be911e9e6';
 
 abstract class _$ReshapeEnabledSetting extends $AsyncNotifier<bool> {
   FutureOr<bool> build();

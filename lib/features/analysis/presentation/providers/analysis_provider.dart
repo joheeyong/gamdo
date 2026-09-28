@@ -7,6 +7,8 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/providers/style_profile_provider.dart';
+import '../../../../core/services/firebase_service.dart'
+    show mergeLearnedTargetParams;
 export '../../../../core/providers/style_profile_provider.dart';
 import '../../../../core/services/instagram_service.dart';
 import '../../di/analysis_providers.dart';
@@ -95,6 +97,11 @@ class StyleAnalysisState {
 }
 
 class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
+  /// 파이프라인 실행 번호. 실행마다 1씩 올라간다.
+  /// 완료 배너의 지연 reset이 그 뒤에 시작된 새 실행을 지우지 않도록 쓴다.
+  int _runId = 0;
+  int get runId => _runId;
+
   @override
   StyleAnalysisState build() => const StyleAnalysisState();
 
@@ -103,6 +110,7 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
     required String accessToken,
     required String userId,
   }) async {
+    _runId++;
     try {
       // 1. 미디어 조회
       state = state.copyWith(status: StyleAnalysisStatus.fetchingMedia);
@@ -110,7 +118,7 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
 
       final prefs = await SharedPreferences.getInstance();
       final proxyUrl =
-          prefs.getString('proxy_url') ?? ApiConstants.defaultProxyUrl;
+          ApiConstants.resolveProxyUrl(prefs.getString('proxy_url'));
       final dio = ref.read(dioProvider);
       final instagramService = InstagramService(
         dio: dio,
@@ -218,8 +226,11 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
         recommendations: recommendations,
       );
 
-      // 6. 인메모리 캐시 업데이트
-      ref.read(userStyleProfileProvider.notifier).state = styleProfile;
+      // 6. 인메모리 캐시 업데이트 — 학습된 targetParams는 유지
+      //    (RTDB도 styleProfile/targetParams를 건드리지 않는다)
+      ref.read(userStyleProfileProvider.notifier).state =
+          mergeLearnedTargetParams(
+              styleProfile, ref.read(userStyleProfileProvider));
 
       state = state.copyWith(status: StyleAnalysisStatus.completed);
       developer.log('Style analysis completed', name: 'StyleAnalysis');
@@ -236,6 +247,14 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
   /// 상태 초기화.
   void reset() {
     state = const StyleAnalysisState();
+  }
+
+  /// [runId] 실행이 완료 상태로 남아 있을 때만 초기화한다.
+  /// 그 사이 새 분석이 시작됐으면 아무것도 하지 않는다.
+  void resetIfCompletedRun(int runId) {
+    if (runId == _runId && state.status == StyleAnalysisStatus.completed) {
+      reset();
+    }
   }
 }
 

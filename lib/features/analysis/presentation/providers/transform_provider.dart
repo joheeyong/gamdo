@@ -15,6 +15,8 @@ import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../../../core/providers/style_profile_provider.dart';
 import '../../../../core/services/image_service.dart';
 import '../../di/analysis_providers.dart';
+import '../../domain/entities/stored_transform.dart';
+import '../../domain/repositories/analysis_repository.dart';
 import '../../domain/entities/transform_params.dart';
 
 // Re-export TransformParams so existing consumers still see it here
@@ -53,6 +55,20 @@ class TransformState {
   /// 저장 시에도 그대로 되돌려 보내야 한다.
   final List<dynamic>? toneCurvePoints;
 
+  /// 이 상태를 만든 분석에 넘긴 원본 파일 경로.
+  final String? sourceImagePath;
+
+  /// 분석 저장소가 앱 문서 폴더에 복사해 둔 경로 (히스토리 기록의 imagePath).
+  /// 변형 화면은 이 둘 중 하나로 열리므로 둘 다 들고 있어야 같은 사진인지 안다.
+  final String? savedImagePath;
+
+  /// 이 결과가 저장된 분석 기록(DB 행) id. 다시 분석할 때 새 행을 만들지 않고
+  /// 이 행을 갱신하는 데 쓴다.
+  final int? recordId;
+
+  /// 로딩이 AI 분석이 아니라 저장된 값으로 다시 그리는 중인지 (문구용).
+  final bool restoring;
+
   const TransformState({
     this.status = TransformStatus.idle,
     this.params = const TransformParams(),
@@ -66,7 +82,25 @@ class TransformState {
     this.autoEdits,
     this.regionParams,
     this.toneCurvePoints,
+    this.sourceImagePath,
+    this.savedImagePath,
+    this.recordId,
+    this.restoring = false,
   });
+
+  /// 이 상태(변형 결과)가 [imagePath] 사진의 것인지.
+  ///
+  /// provider가 전역이라, 다른 사진의 결과가 남아 있는 채로 변형 화면이
+  /// 열리면 지금 사진의 Before 옆에 이전 사진의 After가 뜬다.
+  ///
+  /// 화면과 상태 모두 기록 id를 알면 id로 판별한다 (같은 기록이면 경로 표기가
+  /// 달라도 같은 사진, 다른 기록이면 다른 사진). 어느 쪽이든 모르면 경로로 본다.
+  bool belongsTo(String imagePath, {int? recordId}) {
+    if (recordId != null && this.recordId != null) {
+      return recordId == this.recordId;
+    }
+    return imagePath == sourceImagePath || imagePath == savedImagePath;
+  }
 
   TransformState copyWith({
     TransformStatus? status,
@@ -81,6 +115,10 @@ class TransformState {
     Map<String, dynamic>? autoEdits,
     Map<String, dynamic>? regionParams,
     List<dynamic>? toneCurvePoints,
+    String? sourceImagePath,
+    String? savedImagePath,
+    int? recordId,
+    bool? restoring,
   }) {
     return TransformState(
       status: status ?? this.status,
@@ -95,6 +133,10 @@ class TransformState {
       autoEdits: autoEdits ?? this.autoEdits,
       regionParams: regionParams ?? this.regionParams,
       toneCurvePoints: toneCurvePoints ?? this.toneCurvePoints,
+      sourceImagePath: sourceImagePath ?? this.sourceImagePath,
+      savedImagePath: savedImagePath ?? this.savedImagePath,
+      recordId: recordId ?? this.recordId,
+      restoring: restoring ?? this.restoring,
     );
   }
 }
@@ -103,14 +145,28 @@ class TransformNotifier extends Notifier<TransformState> {
   CancelToken? _manualCancelToken;
   CancelToken? _autoTransformCancelToken;
 
+  /// [TransformState.transformedImageBytes]가 서버의 최종 화질 렌더링인지.
+  /// 미리보기(저해상도) 바이트면 저장 폴백으로 쓰면 안 된다.
+  bool _bytesAreFullQuality = false;
+
   @override
   TransformState build() => const TransformState();
 
   /// 진행 중인 자동 변형 요청을 취소한다.
+  ///
+  /// 상태도 idle로 되돌린다. provider가 전역(non-autoDispose)이라
+  /// loadingAutoTransform이 남으면 다음 화면이 "분석 중"으로 오인한다.
   void cancelAutoTransform() {
     _autoTransformCancelToken?.cancel('사용자 취소');
     _autoTransformCancelToken = null;
+    if (state.status == TransformStatus.loadingAutoTransform) {
+      state = TransformState(referenceImages: state.referenceImages);
+    }
   }
+
+  /// [token]의 요청이 아직 유효한지 — 취소됐거나 새 요청에 밀렸으면 false.
+  bool _isCurrent(CancelToken token) =>
+      !token.isCancelled && identical(token, _autoTransformCancelToken);
 
   void updateParamsOnly(TransformParams params) {
     state = state.copyWith(params: params);
@@ -144,14 +200,27 @@ class TransformNotifier extends Notifier<TransformState> {
     }
   }
 
-  Future<({String analysisJson, String imagePath})?> analyzeAndTransform(File imageFile) async {
+  /// AI 분석 + 변형을 돌린다 (~30-70초, 유료 호출).
+  ///
+  /// [recordId]가 있으면 그 기록을 갱신하고, 없으면 새 기록을 만든다.
+  Future<({String analysisJson, String imagePath, int recordId})?>
+      analyzeAndTransform(File imageFile, {int? recordId}) async {
     // 이전 요청이 있으면 취소
     _autoTransformCancelToken?.cancel('새 자동 변형 요청');
-    _autoTransformCancelToken = CancelToken();
+    // 필드가 아니라 지역 변수로 잡는다. 이미지 처리 도중 취소되면 필드는
+    // null이 되어, 그대로 넘기면 취소된 요청이 서버로 나가 버린다.
+    final token = CancelToken();
+    _autoTransformCancelToken = token;
+    _bytesAreFullQuality = false;
 
-    state = state.copyWith(
+    // 새 사진을 시작할 때 이전 사진의 결과를 전부 비운다. copyWith는 null로
+    // 되돌릴 수 없어 regionParams·톤 커브·보정 설명 등이 다음 사진에 새어 들었다.
+    // 대표 사진은 사용자 단위라 유지한다.
+    state = TransformState(
       status: TransformStatus.loadingAutoTransform,
-      errorMessage: null,
+      referenceImages: state.referenceImages,
+      sourceImagePath: imageFile.path,
+      recordId: recordId,
     );
 
     try {
@@ -167,6 +236,7 @@ class TransformNotifier extends Notifier<TransformState> {
 
       final fullProcessed = await imageService.processImage(imageFile);
       final previewBase64 = await imageService.processPreviewImage(imageFile);
+      if (!_isCurrent(token)) return null;
 
       state = state.copyWith(
         cachedFullBase64: fullProcessed.base64,
@@ -176,13 +246,15 @@ class TransformNotifier extends Notifier<TransformState> {
       final reshapeEnabled =
           ref.read(reshapeEnabledSettingProvider).value ?? false;
 
-      final result = await repo.analyzeAndTransform(
+      final result = await repo.analyzeAndTransformRecord(
         imageFile: imageFile,
         styleProfile: styleProfile,
         userId: userId,
         reshapeEnabled: reshapeEnabled,
-        cancelToken: _autoTransformCancelToken,
+        cancelToken: token,
+        recordId: recordId,
       );
+      if (!_isCurrent(token)) return null;
 
       final imageB64 = result.fullResult['image_base64'] as String?;
       final paramsMap = result.fullResult['params'] as Map<String, dynamic>?;
@@ -211,15 +283,24 @@ class TransformNotifier extends Notifier<TransformState> {
         autoEdits: analysisMap?['autoEdits'] as Map<String, dynamic>?,
         regionParams: analysisMap?['regionParams'] as Map<String, dynamic>?,
         toneCurvePoints: paramsMap?['tone_curve_points'] as List<dynamic>?,
+        savedImagePath: result.imagePath,
+        recordId: result.recordId,
       );
+      _bytesAreFullQuality = true;
 
-      return (analysisJson: result.analysisJson, imagePath: result.imagePath);
+      return (
+        analysisJson: result.analysisJson,
+        imagePath: result.imagePath,
+        recordId: result.recordId,
+      );
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) {
         developer.log('analyzeAndTransform cancelled (정상 취소)', name: 'Transform');
         return null;
       }
       developer.log('analyzeAndTransform failed: $e', name: 'Transform');
+      // 새 요청에 밀린 이전 요청의 실패가 새 요청의 로딩 상태를 덮지 않게
+      if (!_isCurrent(token)) return null;
       final msg = e.response?.statusCode != null
           ? ApiException(message: e.message ?? '', statusCode: e.response?.statusCode).userMessage
           : '인터넷 연결을 확인해 주세요';
@@ -229,6 +310,7 @@ class TransformNotifier extends Notifier<TransformState> {
       );
     } catch (e) {
       developer.log('analyzeAndTransform failed: $e', name: 'Transform');
+      if (!_isCurrent(token)) return null;
       final msg = e is ApiException ? e.userMessage : '분석 중 오류가 발생했습니다. 다시 시도해 주세요';
       state = state.copyWith(
         status: TransformStatus.error,
@@ -236,6 +318,138 @@ class TransformNotifier extends Notifier<TransformState> {
       );
     }
     return null;
+  }
+
+  /// 기록에서 변형 화면을 연다.
+  ///
+  /// 기록에 변형 재현 정보(transformJson)가 있으면 AI를 부르지 않고
+  /// apply-transform 한 번으로 같은 결과를 다시 그린다 — 새 기록도 만들지
+  /// 않는다. 없으면(v3 이전 기록) 분석을 다시 돌리되 그 기록을 갱신한다.
+  Future<({String analysisJson, String imagePath, int recordId})?> openRecord(
+    int recordId,
+    File imageFile,
+  ) async {
+    _autoTransformCancelToken?.cancel('기록 열기');
+    final token = CancelToken();
+    _autoTransformCancelToken = token;
+    _bytesAreFullQuality = false;
+
+    state = TransformState(
+      status: TransformStatus.loadingAutoTransform,
+      referenceImages: state.referenceImages,
+      sourceImagePath: imageFile.path,
+      recordId: recordId,
+      restoring: true,
+    );
+
+    SavedAnalysis? saved;
+    try {
+      saved = await ref.read(analysisRepositoryDIProvider).loadRecord(recordId);
+    } catch (e) {
+      developer.log('loadRecord failed: $e', name: 'Transform');
+    }
+    if (!_isCurrent(token)) return null;
+
+    final transform = saved?.transform;
+    if (saved == null || transform == null) {
+      // 재현 정보가 없는 옛 기록 — 한 번 분석해 그 기록에 채운다.
+      // 기록이 지워졌으면(saved == null) 새 기록으로 남긴다.
+      return analyzeAndTransform(imageFile, recordId: saved?.id);
+    }
+
+    final ok = await _restore(
+      imageFile,
+      transform,
+      recordId: saved.id,
+      savedImagePath: saved.imagePath,
+      token: token,
+    );
+    if (!ok) return null;
+    return (
+      analysisJson: saved.analysisJson,
+      imagePath: saved.imagePath,
+      recordId: saved.id,
+    );
+  }
+
+  /// 저장된 변형 값으로 상태를 채우고 최종 화질로 다시 그린다 (AI 호출 없음).
+  Future<bool> _restore(
+    File imageFile,
+    StoredTransform transform, {
+    required int recordId,
+    required String savedImagePath,
+    required CancelToken token,
+  }) async {
+    try {
+      final imageService = ref.read(imageServiceProvider);
+      final fullProcessed = await imageService.processImage(imageFile);
+      final previewBase64 = await imageService.processPreviewImage(imageFile);
+      if (!_isCurrent(token)) return false;
+
+      var params = transform.transformParams;
+      // 설정에서 얼굴/체형 보정을 끈 것이 확인되면 저장된 체형 값을 쓰지 않는다.
+      // (분석 당시 켜져 있었을 수 있다. 서버도 꺼져 있으면 0으로 계산한다.)
+      if (ref.read(reshapeEnabledSettingProvider).value == false) {
+        params = params.copyWith(
+          faceSlim: 0.0,
+          jawSharpen: 0.0,
+          eyeEnlarge: 0.0,
+          legStretch: 0.0,
+          shoulderWidth: 0.0,
+          waistSlim: 0.0,
+        );
+      }
+
+      state = state.copyWith(
+        cachedFullBase64: fullProcessed.base64,
+        cachedPreviewBase64: previewBase64,
+        params: params,
+        originalParams: params,
+        paramsComment: transform.paramsComment,
+        autoEdits: transform.autoEdits,
+        regionParams: transform.regionParams,
+        toneCurvePoints: transform.toneCurvePoints,
+        savedImagePath: savedImagePath,
+        recordId: recordId,
+      );
+
+      // 저장·공유와 같은 요청 — 화면의 After가 저장본과 같아진다.
+      final result = await _renderFullQuality(imageFile, cancelToken: token);
+      if (!_isCurrent(token)) return false;
+
+      final imageB64 = result['image_base64'] as String?;
+      if (imageB64 == null) {
+        state = state.copyWith(
+          status: TransformStatus.error,
+          errorMessage: '변형된 이미지를 받지 못했습니다',
+        );
+        return false;
+      }
+      state = state.copyWith(
+        status: TransformStatus.ready,
+        transformedImageBytes: base64Decode(imageB64),
+      );
+      _bytesAreFullQuality = true;
+      return true;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) return false;
+      developer.log('restore failed: $e', name: 'Transform');
+      if (!_isCurrent(token)) return false;
+      state = state.copyWith(
+        status: TransformStatus.error,
+        errorMessage: '인터넷 연결을 확인해 주세요',
+      );
+    } catch (e) {
+      developer.log('restore failed: $e', name: 'Transform');
+      if (!_isCurrent(token)) return false;
+      state = state.copyWith(
+        status: TransformStatus.error,
+        errorMessage: e is ApiException
+            ? e.userMessage
+            : '변형 결과를 불러오지 못했어요. 다시 시도해 주세요',
+      );
+    }
+    return false;
   }
 
   Future<void> applyManual(File imageFile, TransformParams params) async {
@@ -296,6 +510,7 @@ class TransformNotifier extends Notifier<TransformState> {
         status: TransformStatus.ready,
         transformedImageBytes: base64Decode(imageB64),
       );
+      _bytesAreFullQuality = !usePreview;
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) {
         developer.log('applyManual cancelled (정상 취소)', name: 'Transform');
@@ -323,27 +538,41 @@ class TransformNotifier extends Notifier<TransformState> {
   ///
   /// 원본에 현재 슬라이더 값 + 기하·영역 보정을 다시 태운다. 미리보기 바이트는
   /// 사용자가 슬라이더를 만졌을 때 최신이 아닐 수 있어 그대로 쓰지 않는다.
+  ///
+  /// 재렌더링이 실패하면, 화면의 After가 서버의 최종 화질 결과일 때만 그걸
+  /// 대신 쓴다. 미리보기 해상도 바이트를 조용히 저장하지 않도록 그 외에는
+  /// null을 돌려 호출부가 실패를 알리게 한다.
   Future<Uint8List?> renderForExport(File imageFile) async {
     try {
-      final transformRepo = ref.read(transformRepositoryProvider);
-      final fullBase64 = state.cachedFullBase64;
-      final result = await transformRepo.applyManualTransform(
-        imageFile: fullBase64 == null ? imageFile : null,
-        imageBase64: fullBase64,
-        preview: false,
-        params: state.params,
-        autoEdits: state.autoEdits,
-        regionParams: state.regionParams,
-        toneCurvePoints: state.toneCurvePoints,
-      );
+      final result = await _renderFullQuality(imageFile);
       final imageB64 = result['image_base64'] as String?;
-      return imageB64 != null
-          ? base64Decode(imageB64)
-          : state.transformedImageBytes;
+      if (imageB64 != null) return base64Decode(imageB64);
+      return _bytesAreFullQuality ? state.transformedImageBytes : null;
     } catch (e) {
       developer.log('renderForExport failed: $e', name: 'Transform');
-      return state.transformedImageBytes;
+      return _bytesAreFullQuality ? state.transformedImageBytes : null;
     }
+  }
+
+  /// 현재 상태 그대로 원본에 최종 화질 변형을 태우는 요청.
+  /// 저장·공유([renderForExport])와 기록 복원([openRecord])이 함께 쓴다 —
+  /// 둘이 다른 요청을 만들면 복원한 After와 저장본이 달라진다.
+  Future<Map<String, dynamic>> _renderFullQuality(
+    File imageFile, {
+    CancelToken? cancelToken,
+  }) {
+    final transformRepo = ref.read(transformRepositoryProvider);
+    final fullBase64 = state.cachedFullBase64;
+    return transformRepo.applyManualTransform(
+      imageFile: fullBase64 == null ? imageFile : null,
+      imageBase64: fullBase64,
+      preview: false,
+      params: state.params,
+      autoEdits: state.autoEdits,
+      regionParams: state.regionParams,
+      toneCurvePoints: state.toneCurvePoints,
+      cancelToken: cancelToken,
+    );
   }
 
   Future<String?> saveTransformedImage(File imageFile) async {
@@ -355,7 +584,9 @@ class TransformNotifier extends Notifier<TransformState> {
       if (bytes == null) {
         state = state.copyWith(
           status: TransformStatus.ready,
-          errorMessage: '저장할 이미지가 없습니다',
+          errorMessage: state.transformedImageBytes == null
+              ? '저장할 이미지가 없습니다'
+              : '저장용 이미지를 만들지 못했어요. 다시 시도해 주세요',
         );
         return null;
       }
@@ -367,7 +598,10 @@ class TransformNotifier extends Notifier<TransformState> {
       );
       await File(savePath).writeAsBytes(bytes);
       await Gal.putImage(savePath, album: 'Gamdo');
-      await File(savePath).delete();
+      // 갤러리 저장은 끝났다. 임시 파일 정리 실패를 저장 실패로 알리지 않는다.
+      try {
+        await File(savePath).delete();
+      } catch (_) {}
 
       await _saveFeedback();
 
@@ -375,6 +609,7 @@ class TransformNotifier extends Notifier<TransformState> {
         status: TransformStatus.ready,
         transformedImageBytes: bytes,
       );
+      _bytesAreFullQuality = true;
       developer.log('Saved transformed image to gallery (full resolution)', name: 'Transform');
       return savePath;
     } catch (e) {

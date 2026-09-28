@@ -87,6 +87,7 @@ GoRouter router(Ref ref) {
             analysisId: extra?['analysisId'] as int?,
             analysisJson: extra?['analysisJson'] as String?,
             imagePath: extra?['imagePath'] as String?,
+            transformedImagePath: extra?['transformedImagePath'] as String?,
           );
         },
       ),
@@ -97,6 +98,7 @@ GoRouter router(Ref ref) {
           return TransformScreen(
             imagePath: extra?['imagePath'] as String? ?? '',
             analysisJson: extra?['analysisJson'] as String? ?? '{}',
+            recordId: extra?['recordId'] as int?,
           );
         },
       ),

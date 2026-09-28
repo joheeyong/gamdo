@@ -4,7 +4,6 @@ class AnalysisRecordEntity {
   final String imagePath;
   final String? thumbnailPath;
   final String analysisJson;
-  final int overallScore;
   final String styleCategory;
   final String colorTemperature;
   final DateTime createdAt;
@@ -14,7 +13,6 @@ class AnalysisRecordEntity {
     required this.imagePath,
     this.thumbnailPath,
     required this.analysisJson,
-    required this.overallScore,
     required this.styleCategory,
     required this.colorTemperature,
     required this.createdAt,

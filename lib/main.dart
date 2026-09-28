@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
+import 'features/settings/presentation/providers/theme_provider.dart';
 import 'firebase_options.dart';
 
 void main() {
@@ -23,8 +24,12 @@ void main() {
       );
     };
 
+    // 저장된 테마를 첫 프레임 전에 읽어 둔다 (다크 모드 복원, 깜빡임 방지).
+    final isDarkMode = await loadSavedDarkMode();
+
     runApp(
       ProviderScope(
+        overrides: [initialDarkModeProvider.overrideWithValue(isDarkMode)],
         observers: [_ProviderLogger()],
         child: const GamdoApp(),
       ),

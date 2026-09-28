@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/services/database.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/insta_ui.dart';
 import '../../../../core/widgets/instagram_widgets.dart';
 import '../providers/history_provider.dart';
@@ -31,30 +30,15 @@ class HistoryScreen extends ConsumerWidget {
     '필름',
   ];
 
-  static const _sortLabels = {
-    HistorySortOrder.newest: '최신순',
-    HistorySortOrder.scoreHigh: '점수 높은순',
-    HistorySortOrder.scoreLow: '점수 낮은순',
-  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final analysesAsync = ref.watch(filteredAnalysesProvider);
     final selectedFilter = ref.watch(selectedStyleFilterProvider);
-    final sortOrder = ref.watch(selectedSortOrderProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.history),
-        actions: [
-          // 정렬: 인스타그램은 팝업 메뉴 대신 하단 시트를 쓴다
-          IconButton(
-            icon: const Icon(Icons.swap_vert),
-            tooltip: '정렬',
-            onPressed: () => _showSortSheet(context, ref, sortOrder),
-          ),
-          const SizedBox(width: 4),
-        ],
       ),
       body: Column(
         children: [
@@ -88,17 +72,7 @@ class HistoryScreen extends ConsumerWidget {
                 }
                 return Column(
                   children: [
-                    _GridSummary(
-                      count: analyses.length,
-                      sortLabel: _sortLabels[sortOrder]!,
-                      averageScore: analyses.isEmpty
-                          ? 0
-                          : (analyses
-                                      .map((a) => a.overallScore)
-                                      .reduce((a, b) => a + b) /
-                                  analyses.length)
-                              .round(),
-                    ),
+                    _GridSummary(count: analyses.length),
                     Expanded(
                       child: _PhotoGrid(
                         analyses: analyses,
@@ -129,31 +103,6 @@ class HistoryScreen extends ConsumerWidget {
     );
   }
 
-  void _showSortSheet(
-    BuildContext context,
-    WidgetRef ref,
-    HistorySortOrder current,
-  ) {
-    showInstaSheet(
-      context,
-      title: '정렬',
-      actions: [
-        for (final entry in _sortLabels.entries)
-          InstaSheetAction(
-            icon: switch (entry.key) {
-              HistorySortOrder.newest => Icons.access_time,
-              HistorySortOrder.scoreHigh => Icons.arrow_upward,
-              HistorySortOrder.scoreLow => Icons.arrow_downward,
-            },
-            label: entry.key == current ? '${entry.value}  ✓' : entry.value,
-            onTap: () => ref
-                .read(selectedSortOrderProvider.notifier)
-                .state = entry.key,
-          ),
-      ],
-    );
-  }
-
   void _showItemSheet(
     BuildContext context,
     WidgetRef ref,
@@ -171,6 +120,7 @@ class HistoryScreen extends ConsumerWidget {
               'analysisId': record.id,
               'analysisJson': record.analysisJson,
               'imagePath': record.imagePath,
+              'transformedImagePath': record.thumbnailPath,
             },
           ),
         ),
@@ -180,6 +130,7 @@ class HistoryScreen extends ConsumerWidget {
           onTap: () => context.push(
             AppRoutes.transform,
             extra: {
+              'recordId': record.id,
               'imagePath': record.imagePath,
               'analysisJson': record.analysisJson,
             },
@@ -221,39 +172,20 @@ class HistoryScreen extends ConsumerWidget {
 
 class _GridSummary extends StatelessWidget {
   final int count;
-  final int averageScore;
-  final String sortLabel;
 
-  const _GridSummary({
-    required this.count,
-    required this.averageScore,
-    required this.sortLabel,
-  });
+  const _GridSummary({required this.count});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: Row(
-        children: [
-          Text(
-            '사진 $count',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: context.instaPrimaryText,
-            ),
-          ),
-          Text(
-            '  ·  평균 $averageScore점',
-            style: TextStyle(fontSize: 13, color: context.instaSecondary),
-          ),
-          const Spacer(),
-          Text(
-            sortLabel,
-            style: TextStyle(fontSize: 12, color: context.instaSecondary),
-          ),
-        ],
+      child: Text(
+        '사진 $count',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: context.instaPrimaryText,
+        ),
       ),
     );
   }
@@ -296,13 +228,6 @@ class _GridTile extends StatelessWidget {
 
   const _GridTile({required this.record, required this.onLongPress});
 
-  Color get _scoreColor {
-    if (record.overallScore >= 80) return AppColors.scoreExcellent;
-    if (record.overallScore >= 60) return AppColors.scoreGood;
-    if (record.overallScore >= 40) return AppColors.scoreAverage;
-    return AppColors.scoreLow;
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -312,6 +237,7 @@ class _GridTile extends StatelessWidget {
           'analysisId': record.id,
           'analysisJson': record.analysisJson,
           'imagePath': record.imagePath,
+          'transformedImagePath': record.thumbnailPath,
         },
       ),
       onLongPress: onLongPress,
@@ -319,40 +245,6 @@ class _GridTile extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           _thumbnail(context),
-          // 점수 배지 — 인스타그램의 '여러 장' 표식 자리
-          Positioned(
-            top: 5,
-            right: 5,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _scoreColor,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${record.overallScore}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );

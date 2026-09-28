@@ -32,8 +32,18 @@ class _BatchTransformScreenState extends ConsumerState<BatchTransformScreen> {
 
   @override
   void dispose() {
-    // Don't reset here — let the user navigate back and re-enter
+    // dispose에서는 ref를 쓸 수 없다. 나갈 때의 정리는 PopScope와
+    // 뒤로 버튼(_leave)이 reset()으로 한다 — 진행 중인 요청도 함께 취소된다.
     super.dispose();
+  }
+
+  void _leave() {
+    ref.read(batchTransformProvider.notifier).reset();
+    if (Navigator.of(context).canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
   }
 
   Future<void> _onSaveAll() async {
@@ -49,54 +59,54 @@ class _BatchTransformScreenState extends ConsumerState<BatchTransformScreen> {
   Widget build(BuildContext context) {
     final batchState = ref.watch(batchTransformProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          '일괄 변형',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            ref.read(batchTransformProvider.notifier).reset();
-            if (Navigator.of(context).canPop()) {
-              context.pop();
-            } else {
-              context.go('/home');
-            }
-          },
-        ),
-        actions: [
-          if (batchState.status == BatchStatus.reviewing ||
-              batchState.status == BatchStatus.done)
-            // 인스타그램 편집 화면의 그래디언트 완료 액션
-            GestureDetector(
-              onTap: batchState.status == BatchStatus.saving
-                  ? null
-                  : _onSaveAll,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16, left: 4),
-                child: Center(
-                  child: batchState.status == BatchStatus.saving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const GradientText(
-                          '전체 저장',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
+    // 시스템 뒤로 제스처/버튼으로 나가도 배치 루프를 멈춘다.
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) ref.read(batchTransformProvider.notifier).reset();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            '일괄 변형',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _leave,
+          ),
+          actions: [
+            // 저장이 끝난(done) 뒤에는 버튼을 숨겨 같은 사진이 두 번 저장되지 않게 한다.
+            if (batchState.status == BatchStatus.reviewing ||
+                batchState.status == BatchStatus.saving)
+              // 인스타그램 편집 화면의 그래디언트 완료 액션
+              GestureDetector(
+                onTap: batchState.status == BatchStatus.saving
+                    ? null
+                    : _onSaveAll,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16, left: 4),
+                  child: Center(
+                    child: batchState.status == BatchStatus.saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const GradientText(
+                            '전체 저장',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
+        body: _buildBody(context, batchState),
       ),
-      body: _buildBody(context, batchState),
     );
   }
 

@@ -6,30 +6,32 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/extensions/context_extensions.dart';
-import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
-import '../../../../core/widgets/instagram_widgets.dart';
-import '../../../../core/widgets/score_indicator.dart';
 import '../../domain/photo_analysis.dart';
 import '../widgets/color_palette_view.dart';
 import '../widgets/color_temperature_gauge.dart';
 import '../widgets/saturation_chart.dart';
 import '../widgets/composition_overlay.dart';
 import '../widgets/tone_report_card.dart';
-import '../widgets/tips_card.dart';
 
 class AnalysisResultScreen extends StatelessWidget {
   final int? analysisId;
   final String? analysisJson;
+
+  /// 분석 대상이 된 원본. 구도 분석 오버레이가 이 사진 위에 그려진다.
   final String? imagePath;
+
+  /// 변형(after) 결과. 상단에 크게 보여 주는 그림이다.
+  /// 없으면(v2 이전 기록) 원본으로 폴백한다.
+  final String? transformedImagePath;
 
   const AnalysisResultScreen({
     super.key,
     this.analysisId,
     this.analysisJson,
     this.imagePath,
+    this.transformedImagePath,
   });
 
   @override
@@ -55,6 +57,8 @@ class AnalysisResultScreen extends StatelessWidget {
         ),
       );
     }
+
+    final heroPath = transformedImagePath ?? imagePath;
 
     return Scaffold(
       body: CustomScrollView(
@@ -99,7 +103,6 @@ class AnalysisResultScreen extends StatelessWidget {
                     ..writeln()
                     ..writeln('\uC2A4\uD0C0\uC77C: ${analysis.toneReport.styleCategory}')
                     ..writeln('\uBD84\uC704\uAE30: ${analysis.toneReport.overallMood}')
-                    ..writeln('\uC810\uC218: ${analysis.overallScore}\uC810')
                     ..writeln()
                     ..writeln('#\uAC10\uB3C4 #\uC0AC\uC9C4\uBD84\uC11D #AI\uCF54\uCE6D');
                   SharePlus.instance.share(
@@ -113,9 +116,11 @@ class AnalysisResultScreen extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (imagePath != null)
+                  // 사용자가 만든 결과물이 주인공이다. 원본은 아래 구도
+                  // 분석에서만 쓴다.
+                  if (heroPath != null)
                     Image.file(
-                      File(imagePath!),
+                      File(heroPath),
                       fit: BoxFit.cover,
                     ),
                   // Gradient overlay
@@ -129,15 +134,6 @@ class AnalysisResultScreen extends StatelessWidget {
                           Colors.black.withValues(alpha: 0.7),
                         ],
                       ),
-                    ),
-                  ),
-                  // Score overlay
-                  Positioned(
-                    bottom: 16,
-                    right: 16,
-                    child: ScoreIndicator(
-                      score: analysis.overallScore,
-                      size: 72,
                     ),
                   ),
                   Positioned(
@@ -200,63 +196,12 @@ class AnalysisResultScreen extends StatelessWidget {
                     technique: analysis.compositionAnalysis.primaryTechnique,
                     balanceScore: analysis.compositionAnalysis.balanceScore,
                   ),
-                const SizedBox(height: 16),
-                _CompositionDetails(
-                  strengths: analysis.compositionAnalysis.strengths,
-                  improvements: analysis.compositionAnalysis.improvements,
-                ),
                 const SizedBox(height: 24),
 
                 // Tone Report Section
                 _SectionHeader(title: context.l10n.toneReport),
                 const SizedBox(height: 12),
                 ToneReportCard(toneReport: analysis.toneReport),
-                const SizedBox(height: 24),
-
-                // Tips Section
-                TipsCard(
-                  title: context.l10n.shootingTips,
-                  tips: analysis.shootingTips,
-                  icon: Icons.camera_alt_outlined,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(height: 16),
-                TipsCard(
-                  title: context.l10n.editingTips,
-                  tips: analysis.editingTips,
-                  icon: Icons.tune_outlined,
-                  color: AppColors.accent,
-                ),
-                const SizedBox(height: 24),
-
-                // 사진 변형 버튼
-                if (imagePath != null)
-                  InstagramGradientButton(
-                    onPressed: () {
-                      context.push(
-                        AppRoutes.transform,
-                        extra: {
-                          'imagePath': imagePath,
-                          'analysisJson': analysisJson,
-                        },
-                      );
-                    },
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.auto_fix_high, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text(
-                          '사진 변형하기',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 const SizedBox(height: 40),
               ]),
             ),
@@ -319,92 +264,6 @@ class _HarmonyCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _CompositionDetails extends StatelessWidget {
-  final List<String> strengths;
-  final List<String> improvements;
-
-  const _CompositionDetails({
-    required this.strengths,
-    required this.improvements,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Strengths
-            Row(
-              children: [
-                const Icon(Icons.thumb_up_outlined,
-                    size: 18, color: AppColors.success),
-                const SizedBox(width: 8),
-                Text(
-                  context.l10n.strengths,
-                  style: context.textTheme.titleMedium?.copyWith(
-                    color: AppColors.success,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ...strengths.map((s) => _Bullet(text: s, color: AppColors.success)),
-            const SizedBox(height: 16),
-            // Improvements
-            Row(
-              children: [
-                const Icon(Icons.lightbulb_outlined,
-                    size: 18, color: AppColors.warning),
-                const SizedBox(width: 8),
-                Text(
-                  context.l10n.improvements,
-                  style: context.textTheme.titleMedium?.copyWith(
-                    color: AppColors.warning,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ...improvements.map((s) => _Bullet(text: s, color: AppColors.warning)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 강점·개선점 목록의 점 불릿.
-class _Bullet extends StatelessWidget {
-  final String text;
-  final Color color;
-
-  const _Bullet({required this.text, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 26, bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 8, right: 8),
-            child: Container(
-              width: 4,
-              height: 4,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-            ),
-          ),
-          Expanded(child: Text(text, style: context.textTheme.bodyMedium)),
-        ],
       ),
     );
   }

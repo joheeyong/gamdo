@@ -12,7 +12,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
 import '../../../../core/widgets/instagram_widgets.dart';
-import '../../../../core/widgets/score_indicator.dart';
 import '../../domain/photo_analysis.dart';
 import '../providers/transform_provider.dart';
 import '../widgets/color_palette_view.dart';
@@ -24,10 +23,16 @@ class TransformScreen extends ConsumerStatefulWidget {
   final String imagePath;
   final String analysisJson;
 
+  /// 기록(홈·기록 화면)에서 열었을 때의 분석 기록 id. 있으면 AI를 다시
+  /// 부르지 않고 저장된 변형 값으로 복원하며, 다시 분석해도 새 기록을
+  /// 만들지 않고 이 기록을 갱신한다.
+  final int? recordId;
+
   const TransformScreen({
     super.key,
     required this.imagePath,
     required this.analysisJson,
+    this.recordId,
   });
 
   @override
@@ -43,11 +48,19 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
   bool _instagramInstalled = false;
   late Map<String, dynamic> _analysis;
 
+  /// 이 화면의 결과가 저장된 기록 id. 업로드 직후 열리면 라우트로는 오지 않고
+  /// 전역 상태에서 알게 된다.
+  int? _recordId;
+
+  /// 오류 화면의 '다시 시도'가 되풀이할 동작 (열기 또는 다시 분석).
+  late Future<void> Function() _retry = _open;
+
   @override
   void initState() {
     super.initState();
     _imageFile = File(widget.imagePath);
     _analysis = jsonDecode(widget.analysisJson) as Map<String, dynamic>;
+    _recordId = widget.recordId;
 
     InstagramShareService().isInstalled().then((installed) {
       if (mounted) setState(() => _instagramInstalled = installed);
@@ -55,21 +68,76 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = ref.read(transformProvider);
-      if (state.status != TransformStatus.ready ||
-          state.transformedImageBytes == null) {
-        ref.read(transformProvider.notifier).analyzeAndTransform(_imageFile);
+      // 전역 상태의 결과는 이 사진의 것일 때만 재사용한다. 히스토리/홈에서
+      // 다른 사진으로 들어오면 이전 사진의 After가 남아 있을 수 있다.
+      final belongs =
+          state.belongsTo(widget.imagePath, recordId: widget.recordId);
+      final hasResultForThisImage = belongs &&
+          state.transformedImageBytes != null &&
+          (state.status == TransformStatus.ready ||
+              state.status == TransformStatus.applyingManual ||
+              state.status == TransformStatus.saving);
+      if (belongs) _recordId ??= state.recordId;
+      if (!hasResultForThisImage) {
+        _open();
       }
       // 대표 사진 로드
       ref.read(transformProvider.notifier).loadReferenceImages();
     });
   }
 
+  /// 화면을 처음 채운다. 기록에서 왔으면 저장된 변형 값으로 복원하고
+  /// (AI 호출 없음), 그렇지 않으면 분석을 돌린다.
+  Future<void> _open() async {
+    final recordId = _recordId;
+    if (recordId == null) return _runAnalysis();
+    _retry = _open;
+    final result = await ref
+        .read(transformProvider.notifier)
+        .openRecord(recordId, _imageFile);
+    _applyResult(result);
+  }
+
+  /// 분석+변형을 (다시) 돌리고, 새 분석 결과로 하단 분석 섹션도 갱신한다.
+  /// 기록에 묶인 화면이면 새 기록을 만들지 않고 그 기록을 갱신한다.
+  Future<void> _runAnalysis() async {
+    _retry = _runAnalysis;
+    final result = await ref
+        .read(transformProvider.notifier)
+        .analyzeAndTransform(_imageFile, recordId: _recordId);
+    _applyResult(result);
+  }
+
+  void _applyResult(
+      ({String analysisJson, String imagePath, int recordId})? result) {
+    if (result == null || !mounted) return;
+    _recordId = result.recordId;
+    try {
+      final analysis = jsonDecode(result.analysisJson);
+      if (analysis is Map<String, dynamic>) {
+        setState(() => _analysis = analysis);
+      }
+    } catch (_) {
+      // 분석 JSON이 깨졌으면 기존 분석 섹션을 그대로 둔다
+    }
+  }
+
   Future<void> _onSave() async {
     final path =
         await ref.read(transformProvider.notifier).saveTransformedImage(_imageFile);
-    if (path != null && mounted) {
+    if (!mounted) return;
+    if (path != null) {
       showInstaToast(context, '\uBCC0\uD615\uB41C \uC0AC\uC9C4\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4',
           icon: Icons.check_circle_outline);
+    } else {
+      // 실패 시 provider는 ready + errorMessage로 돌아가는데, 화면은 error
+      // 상태에서만 메시지를 그려 아무 반응이 없던 문제
+      showInstaToast(
+        context,
+        ref.read(transformProvider).errorMessage ??
+            '\uC0AC\uC9C4\uC744 \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694',
+        isError: true,
+      );
     }
   }
 
@@ -130,16 +198,19 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
       message: '\uD604\uC7AC \uBCC0\uD615 \uACB0\uACFC\uB97C \uBC84\uB9AC\uACE0 \uB2E4\uC2DC \uBD84\uC11D\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?',
       confirmLabel: '\uB2E4\uC2DC \uBD84\uC11D',
     );
-    if (confirmed) {
-      ref.read(transformProvider.notifier).analyzeAndTransform(_imageFile);
+    if (confirmed && mounted) {
+      await _runAnalysis();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final transformState = ref.watch(transformProvider);
+    // 다른 사진의 결과가 남아 있으면 첫 프레임부터 로딩으로 보여 준다
+    // (다음 프레임에 initState가 이 사진의 분석을 시작한다).
     final isLoading =
-        transformState.status == TransformStatus.loadingAutoTransform;
+        transformState.status == TransformStatus.loadingAutoTransform ||
+            !transformState.belongsTo(widget.imagePath, recordId: _recordId);
     final isSaving = transformState.status == TransformStatus.saving;
 
     return Scaffold(
@@ -168,7 +239,7 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
               onPressed: _onReanalyze,
             ),
           // 인스타그램 편집 화면의 그래디언트 완료 액션
-          if (transformState.transformedImageBytes != null)
+          if (transformState.transformedImageBytes != null && !isLoading)
             GestureDetector(
               onTap: isSaving ? null : _onSave,
               child: Padding(
@@ -204,7 +275,12 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'AI\uAC00 \uC0AC\uC9C4\uC744 \uBD84\uC11D\uD558\uACE0 \uBCC0\uD615\uD558\uB294 \uC911...',
+                    transformState.restoring &&
+                            transformState.status ==
+                                TransformStatus.loadingAutoTransform
+                        // 변형 결과를 불러오는 중...
+                        ? '\uBCC0\uD615 \uACB0\uACFC\uB97C \uBD88\uB7EC\uC624\uB294 \uC911...'
+                        : 'AI\uAC00 \uC0AC\uC9C4\uC744 \uBD84\uC11D\uD558\uACE0 \uBCC0\uD615\uD558\uB294 \uC911...',
                     style: TextStyle(fontSize: 14, color: context.instaSecondary),
                   ),
                 ],
@@ -230,11 +306,7 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
                           child: InstaSecondaryButton(
                             label: '\uB2E4\uC2DC \uC2DC\uB3C4',
                             icon: Icons.refresh,
-                            onPressed: () {
-                              ref
-                                  .read(transformProvider.notifier)
-                                  .analyzeAndTransform(_imageFile);
-                            },
+                            onPressed: () => _retry(),
                           ),
                         ),
                       ],
@@ -259,7 +331,8 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
                         originalImage: _imageFile,
                         transformedBytes:
                             transformState.transformedImageBytes,
-                        isApplying: false,
+                        isApplying: transformState.status ==
+                            TransformStatus.applyingManual,
                       ),
                     ),
 
@@ -372,6 +445,17 @@ class _AppliedTransformsSummary extends StatelessWidget {
     }
     if (params.vignette.abs() >= 0.01) {
       items.add(_TransformItem(Icons.vignette_outlined, '\uBE44\uB124\uD305', params.vignette));
+    }
+
+    // 촬영 결함 교정
+    if (params.autoWb >= 0.01) {
+      items.add(_TransformItem(Icons.wb_auto_outlined, '\uD654\uC774\uD2B8\uBC38\uB7F0\uC2A4', params.autoWb));
+    }
+    if (params.denoise >= 0.01) {
+      items.add(_TransformItem(Icons.blur_on, '\uB178\uC774\uC988 \uC81C\uAC70', params.denoise));
+    }
+    if (params.backgroundBlur >= 0.01) {
+      items.add(_TransformItem(Icons.lens_blur, '\uBC30\uACBD \uD750\uB9BC', params.backgroundBlur));
     }
 
     // 피부 보정
@@ -529,14 +613,7 @@ class _ParsedAnalysis extends StatelessWidget {
           const SizedBox(height: 4),
 
           // 점수 + 톤 리포트
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ScoreIndicator(score: analysis.overallScore, size: 52),
-              const SizedBox(width: 12),
-              Expanded(child: ToneReportCard(toneReport: analysis.toneReport)),
-            ],
-          ),
+          ToneReportCard(toneReport: analysis.toneReport),
           const SizedBox(height: 12),
 
           // 색감
@@ -569,7 +646,6 @@ class _RawAnalysis extends StatelessWidget {
     final style = tone['styleCategory'] as String? ?? '';
     final mood = tone['overallMood'] as String? ?? '';
     final narrative = tone['narrative'] as String? ?? '';
-    final score = (analysis['overallScore'] as num?)?.toInt() ?? 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -580,10 +656,6 @@ class _RawAnalysis extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              if (score > 0) ...[
-                ScoreIndicator(score: score, size: 52),
-                const SizedBox(width: 12),
-              ],
               Expanded(
                 child: Wrap(
                   spacing: 6,

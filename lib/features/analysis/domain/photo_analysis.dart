@@ -9,9 +9,6 @@ sealed class PhotoAnalysisResponse with _$PhotoAnalysisResponse {
     required ColorAnalysis colorAnalysis,
     required CompositionAnalysis compositionAnalysis,
     required ToneReport toneReport,
-    required List<String> shootingTips,
-    required List<String> editingTips,
-    required int overallScore,
     @Default([]) List<String> hashtags,
   }) = _PhotoAnalysisResponse;
 
@@ -39,8 +36,6 @@ sealed class CompositionAnalysis with _$CompositionAnalysis {
   const factory CompositionAnalysis({
     required String primaryTechnique,
     required double balanceScore,
-    required List<String> strengths,
-    required List<String> improvements,
   }) = _CompositionAnalysis;
 
   factory CompositionAnalysis.fromJson(Map<String, dynamic> json) =>

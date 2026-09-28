@@ -55,17 +55,6 @@ class $AnalysisRecordsTable extends AnalysisRecords
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _overallScoreMeta = const VerificationMeta(
-    'overallScore',
-  );
-  @override
-  late final GeneratedColumn<int> overallScore = GeneratedColumn<int>(
-    'overall_score',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _styleCategoryMeta = const VerificationMeta(
     'styleCategory',
   );
@@ -88,6 +77,17 @@ class $AnalysisRecordsTable extends AnalysisRecords
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _transformJsonMeta = const VerificationMeta(
+    'transformJson',
+  );
+  @override
+  late final GeneratedColumn<String> transformJson = GeneratedColumn<String>(
+    'transform_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -106,9 +106,9 @@ class $AnalysisRecordsTable extends AnalysisRecords
     imagePath,
     thumbnailPath,
     analysisJson,
-    overallScore,
     styleCategory,
     colorTemperature,
+    transformJson,
     createdAt,
   ];
   @override
@@ -154,17 +154,6 @@ class $AnalysisRecordsTable extends AnalysisRecords
     } else if (isInserting) {
       context.missing(_analysisJsonMeta);
     }
-    if (data.containsKey('overall_score')) {
-      context.handle(
-        _overallScoreMeta,
-        overallScore.isAcceptableOrUnknown(
-          data['overall_score']!,
-          _overallScoreMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_overallScoreMeta);
-    }
     if (data.containsKey('style_category')) {
       context.handle(
         _styleCategoryMeta,
@@ -186,6 +175,15 @@ class $AnalysisRecordsTable extends AnalysisRecords
       );
     } else if (isInserting) {
       context.missing(_colorTemperatureMeta);
+    }
+    if (data.containsKey('transform_json')) {
+      context.handle(
+        _transformJsonMeta,
+        transformJson.isAcceptableOrUnknown(
+          data['transform_json']!,
+          _transformJsonMeta,
+        ),
+      );
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -218,10 +216,6 @@ class $AnalysisRecordsTable extends AnalysisRecords
         DriftSqlType.string,
         data['${effectivePrefix}analysis_json'],
       )!,
-      overallScore: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}overall_score'],
-      )!,
       styleCategory: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}style_category'],
@@ -230,6 +224,10 @@ class $AnalysisRecordsTable extends AnalysisRecords
         DriftSqlType.string,
         data['${effectivePrefix}color_temperature'],
       )!,
+      transformJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transform_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -245,21 +243,30 @@ class $AnalysisRecordsTable extends AnalysisRecords
 
 class AnalysisRecord extends DataClass implements Insertable<AnalysisRecord> {
   final int id;
+
+  /// 사용자가 고른 원본. 다시 변형할 때의 입력이므로 절대 변형본으로 덮지 않는다.
   final String imagePath;
+
+  /// 변형(after) 결과의 축소본. 홈·기록 목록이 보여 주는 그림이다.
+  /// null이면 목록은 [imagePath]로 폴백한다 (v2 이전 기록).
   final String? thumbnailPath;
   final String analysisJson;
-  final int overallScore;
   final String styleCategory;
   final String colorTemperature;
+
+  /// 변형을 AI 없이 다시 그리는 데 필요한 값 (서버 params, autoEdits,
+  /// regionParams, 톤 커브, 보정 설명). `StoredTransform`이 인코딩한다.
+  /// null이면 v3 이전 기록 — 다시 열 때 분석을 한 번 더 돌려 채운다.
+  final String? transformJson;
   final DateTime createdAt;
   const AnalysisRecord({
     required this.id,
     required this.imagePath,
     this.thumbnailPath,
     required this.analysisJson,
-    required this.overallScore,
     required this.styleCategory,
     required this.colorTemperature,
+    this.transformJson,
     required this.createdAt,
   });
   @override
@@ -271,9 +278,11 @@ class AnalysisRecord extends DataClass implements Insertable<AnalysisRecord> {
       map['thumbnail_path'] = Variable<String>(thumbnailPath);
     }
     map['analysis_json'] = Variable<String>(analysisJson);
-    map['overall_score'] = Variable<int>(overallScore);
     map['style_category'] = Variable<String>(styleCategory);
     map['color_temperature'] = Variable<String>(colorTemperature);
+    if (!nullToAbsent || transformJson != null) {
+      map['transform_json'] = Variable<String>(transformJson);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -286,9 +295,11 @@ class AnalysisRecord extends DataClass implements Insertable<AnalysisRecord> {
           ? const Value.absent()
           : Value(thumbnailPath),
       analysisJson: Value(analysisJson),
-      overallScore: Value(overallScore),
       styleCategory: Value(styleCategory),
       colorTemperature: Value(colorTemperature),
+      transformJson: transformJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transformJson),
       createdAt: Value(createdAt),
     );
   }
@@ -303,9 +314,9 @@ class AnalysisRecord extends DataClass implements Insertable<AnalysisRecord> {
       imagePath: serializer.fromJson<String>(json['imagePath']),
       thumbnailPath: serializer.fromJson<String?>(json['thumbnailPath']),
       analysisJson: serializer.fromJson<String>(json['analysisJson']),
-      overallScore: serializer.fromJson<int>(json['overallScore']),
       styleCategory: serializer.fromJson<String>(json['styleCategory']),
       colorTemperature: serializer.fromJson<String>(json['colorTemperature']),
+      transformJson: serializer.fromJson<String?>(json['transformJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -317,9 +328,9 @@ class AnalysisRecord extends DataClass implements Insertable<AnalysisRecord> {
       'imagePath': serializer.toJson<String>(imagePath),
       'thumbnailPath': serializer.toJson<String?>(thumbnailPath),
       'analysisJson': serializer.toJson<String>(analysisJson),
-      'overallScore': serializer.toJson<int>(overallScore),
       'styleCategory': serializer.toJson<String>(styleCategory),
       'colorTemperature': serializer.toJson<String>(colorTemperature),
+      'transformJson': serializer.toJson<String?>(transformJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -329,9 +340,9 @@ class AnalysisRecord extends DataClass implements Insertable<AnalysisRecord> {
     String? imagePath,
     Value<String?> thumbnailPath = const Value.absent(),
     String? analysisJson,
-    int? overallScore,
     String? styleCategory,
     String? colorTemperature,
+    Value<String?> transformJson = const Value.absent(),
     DateTime? createdAt,
   }) => AnalysisRecord(
     id: id ?? this.id,
@@ -340,9 +351,11 @@ class AnalysisRecord extends DataClass implements Insertable<AnalysisRecord> {
         ? thumbnailPath.value
         : this.thumbnailPath,
     analysisJson: analysisJson ?? this.analysisJson,
-    overallScore: overallScore ?? this.overallScore,
     styleCategory: styleCategory ?? this.styleCategory,
     colorTemperature: colorTemperature ?? this.colorTemperature,
+    transformJson: transformJson.present
+        ? transformJson.value
+        : this.transformJson,
     createdAt: createdAt ?? this.createdAt,
   );
   AnalysisRecord copyWithCompanion(AnalysisRecordsCompanion data) {
@@ -355,15 +368,15 @@ class AnalysisRecord extends DataClass implements Insertable<AnalysisRecord> {
       analysisJson: data.analysisJson.present
           ? data.analysisJson.value
           : this.analysisJson,
-      overallScore: data.overallScore.present
-          ? data.overallScore.value
-          : this.overallScore,
       styleCategory: data.styleCategory.present
           ? data.styleCategory.value
           : this.styleCategory,
       colorTemperature: data.colorTemperature.present
           ? data.colorTemperature.value
           : this.colorTemperature,
+      transformJson: data.transformJson.present
+          ? data.transformJson.value
+          : this.transformJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -375,9 +388,9 @@ class AnalysisRecord extends DataClass implements Insertable<AnalysisRecord> {
           ..write('imagePath: $imagePath, ')
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('analysisJson: $analysisJson, ')
-          ..write('overallScore: $overallScore, ')
           ..write('styleCategory: $styleCategory, ')
           ..write('colorTemperature: $colorTemperature, ')
+          ..write('transformJson: $transformJson, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -389,9 +402,9 @@ class AnalysisRecord extends DataClass implements Insertable<AnalysisRecord> {
     imagePath,
     thumbnailPath,
     analysisJson,
-    overallScore,
     styleCategory,
     colorTemperature,
+    transformJson,
     createdAt,
   );
   @override
@@ -402,9 +415,9 @@ class AnalysisRecord extends DataClass implements Insertable<AnalysisRecord> {
           other.imagePath == this.imagePath &&
           other.thumbnailPath == this.thumbnailPath &&
           other.analysisJson == this.analysisJson &&
-          other.overallScore == this.overallScore &&
           other.styleCategory == this.styleCategory &&
           other.colorTemperature == this.colorTemperature &&
+          other.transformJson == this.transformJson &&
           other.createdAt == this.createdAt);
 }
 
@@ -413,18 +426,18 @@ class AnalysisRecordsCompanion extends UpdateCompanion<AnalysisRecord> {
   final Value<String> imagePath;
   final Value<String?> thumbnailPath;
   final Value<String> analysisJson;
-  final Value<int> overallScore;
   final Value<String> styleCategory;
   final Value<String> colorTemperature;
+  final Value<String?> transformJson;
   final Value<DateTime> createdAt;
   const AnalysisRecordsCompanion({
     this.id = const Value.absent(),
     this.imagePath = const Value.absent(),
     this.thumbnailPath = const Value.absent(),
     this.analysisJson = const Value.absent(),
-    this.overallScore = const Value.absent(),
     this.styleCategory = const Value.absent(),
     this.colorTemperature = const Value.absent(),
+    this.transformJson = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   AnalysisRecordsCompanion.insert({
@@ -432,13 +445,12 @@ class AnalysisRecordsCompanion extends UpdateCompanion<AnalysisRecord> {
     required String imagePath,
     this.thumbnailPath = const Value.absent(),
     required String analysisJson,
-    required int overallScore,
     required String styleCategory,
     required String colorTemperature,
+    this.transformJson = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : imagePath = Value(imagePath),
        analysisJson = Value(analysisJson),
-       overallScore = Value(overallScore),
        styleCategory = Value(styleCategory),
        colorTemperature = Value(colorTemperature);
   static Insertable<AnalysisRecord> custom({
@@ -446,9 +458,9 @@ class AnalysisRecordsCompanion extends UpdateCompanion<AnalysisRecord> {
     Expression<String>? imagePath,
     Expression<String>? thumbnailPath,
     Expression<String>? analysisJson,
-    Expression<int>? overallScore,
     Expression<String>? styleCategory,
     Expression<String>? colorTemperature,
+    Expression<String>? transformJson,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -456,9 +468,9 @@ class AnalysisRecordsCompanion extends UpdateCompanion<AnalysisRecord> {
       if (imagePath != null) 'image_path': imagePath,
       if (thumbnailPath != null) 'thumbnail_path': thumbnailPath,
       if (analysisJson != null) 'analysis_json': analysisJson,
-      if (overallScore != null) 'overall_score': overallScore,
       if (styleCategory != null) 'style_category': styleCategory,
       if (colorTemperature != null) 'color_temperature': colorTemperature,
+      if (transformJson != null) 'transform_json': transformJson,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -468,9 +480,9 @@ class AnalysisRecordsCompanion extends UpdateCompanion<AnalysisRecord> {
     Value<String>? imagePath,
     Value<String?>? thumbnailPath,
     Value<String>? analysisJson,
-    Value<int>? overallScore,
     Value<String>? styleCategory,
     Value<String>? colorTemperature,
+    Value<String?>? transformJson,
     Value<DateTime>? createdAt,
   }) {
     return AnalysisRecordsCompanion(
@@ -478,9 +490,9 @@ class AnalysisRecordsCompanion extends UpdateCompanion<AnalysisRecord> {
       imagePath: imagePath ?? this.imagePath,
       thumbnailPath: thumbnailPath ?? this.thumbnailPath,
       analysisJson: analysisJson ?? this.analysisJson,
-      overallScore: overallScore ?? this.overallScore,
       styleCategory: styleCategory ?? this.styleCategory,
       colorTemperature: colorTemperature ?? this.colorTemperature,
+      transformJson: transformJson ?? this.transformJson,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -500,14 +512,14 @@ class AnalysisRecordsCompanion extends UpdateCompanion<AnalysisRecord> {
     if (analysisJson.present) {
       map['analysis_json'] = Variable<String>(analysisJson.value);
     }
-    if (overallScore.present) {
-      map['overall_score'] = Variable<int>(overallScore.value);
-    }
     if (styleCategory.present) {
       map['style_category'] = Variable<String>(styleCategory.value);
     }
     if (colorTemperature.present) {
       map['color_temperature'] = Variable<String>(colorTemperature.value);
+    }
+    if (transformJson.present) {
+      map['transform_json'] = Variable<String>(transformJson.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -522,9 +534,9 @@ class AnalysisRecordsCompanion extends UpdateCompanion<AnalysisRecord> {
           ..write('imagePath: $imagePath, ')
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('analysisJson: $analysisJson, ')
-          ..write('overallScore: $overallScore, ')
           ..write('styleCategory: $styleCategory, ')
           ..write('colorTemperature: $colorTemperature, ')
+          ..write('transformJson: $transformJson, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -550,9 +562,9 @@ typedef $$AnalysisRecordsTableCreateCompanionBuilder =
       required String imagePath,
       Value<String?> thumbnailPath,
       required String analysisJson,
-      required int overallScore,
       required String styleCategory,
       required String colorTemperature,
+      Value<String?> transformJson,
       Value<DateTime> createdAt,
     });
 typedef $$AnalysisRecordsTableUpdateCompanionBuilder =
@@ -561,9 +573,9 @@ typedef $$AnalysisRecordsTableUpdateCompanionBuilder =
       Value<String> imagePath,
       Value<String?> thumbnailPath,
       Value<String> analysisJson,
-      Value<int> overallScore,
       Value<String> styleCategory,
       Value<String> colorTemperature,
+      Value<String?> transformJson,
       Value<DateTime> createdAt,
     });
 
@@ -596,11 +608,6 @@ class $$AnalysisRecordsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get overallScore => $composableBuilder(
-    column: $table.overallScore,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get styleCategory => $composableBuilder(
     column: $table.styleCategory,
     builder: (column) => ColumnFilters(column),
@@ -608,6 +615,11 @@ class $$AnalysisRecordsTableFilterComposer
 
   ColumnFilters<String> get colorTemperature => $composableBuilder(
     column: $table.colorTemperature,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get transformJson => $composableBuilder(
+    column: $table.transformJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -646,11 +658,6 @@ class $$AnalysisRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get overallScore => $composableBuilder(
-    column: $table.overallScore,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get styleCategory => $composableBuilder(
     column: $table.styleCategory,
     builder: (column) => ColumnOrderings(column),
@@ -658,6 +665,11 @@ class $$AnalysisRecordsTableOrderingComposer
 
   ColumnOrderings<String> get colorTemperature => $composableBuilder(
     column: $table.colorTemperature,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get transformJson => $composableBuilder(
+    column: $table.transformJson,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -692,11 +704,6 @@ class $$AnalysisRecordsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get overallScore => $composableBuilder(
-    column: $table.overallScore,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<String> get styleCategory => $composableBuilder(
     column: $table.styleCategory,
     builder: (column) => column,
@@ -704,6 +711,11 @@ class $$AnalysisRecordsTableAnnotationComposer
 
   GeneratedColumn<String> get colorTemperature => $composableBuilder(
     column: $table.colorTemperature,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get transformJson => $composableBuilder(
+    column: $table.transformJson,
     builder: (column) => column,
   );
 
@@ -752,18 +764,18 @@ class $$AnalysisRecordsTableTableManager
                 Value<String> imagePath = const Value.absent(),
                 Value<String?> thumbnailPath = const Value.absent(),
                 Value<String> analysisJson = const Value.absent(),
-                Value<int> overallScore = const Value.absent(),
                 Value<String> styleCategory = const Value.absent(),
                 Value<String> colorTemperature = const Value.absent(),
+                Value<String?> transformJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => AnalysisRecordsCompanion(
                 id: id,
                 imagePath: imagePath,
                 thumbnailPath: thumbnailPath,
                 analysisJson: analysisJson,
-                overallScore: overallScore,
                 styleCategory: styleCategory,
                 colorTemperature: colorTemperature,
+                transformJson: transformJson,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -772,18 +784,18 @@ class $$AnalysisRecordsTableTableManager
                 required String imagePath,
                 Value<String?> thumbnailPath = const Value.absent(),
                 required String analysisJson,
-                required int overallScore,
                 required String styleCategory,
                 required String colorTemperature,
+                Value<String?> transformJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => AnalysisRecordsCompanion.insert(
                 id: id,
                 imagePath: imagePath,
                 thumbnailPath: thumbnailPath,
                 analysisJson: analysisJson,
-                overallScore: overallScore,
                 styleCategory: styleCategory,
                 colorTemperature: colorTemperature,
+                transformJson: transformJson,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

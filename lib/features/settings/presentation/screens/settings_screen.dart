@@ -126,13 +126,8 @@ class _ProfileHeader extends ConsumerWidget {
     final analyses = ref.watch(_allAnalysesProvider).value ?? const [];
 
     final count = analyses.length;
-    final average = analyses.isEmpty
-        ? 0
-        : (analyses.map((a) => a.overallScore).reduce((a, b) => a + b) /
-                analyses.length)
-            .round();
-    final styleCount =
-        analyses.map((a) => a.styleCategory).toSet().length;
+    final styleCount = analyses.map((a) => a.styleCategory).toSet().length;
+    final moodCount = analyses.map((a) => a.colorTemperature).toSet().length;
 
     final primaryStyle = profile?['primaryStyle'] as String? ?? '';
     final moodKeywords =
@@ -168,8 +163,8 @@ class _ProfileHeader extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       InstaStat(value: '$count', label: '분석'),
-                      InstaStat(value: '$average', label: '평균 점수'),
                       InstaStat(value: '$styleCount', label: '스타일'),
+                      InstaStat(value: '$moodCount', label: '색감'),
                     ],
                   ),
                 ),
@@ -319,7 +314,16 @@ class _StyleProfileSection extends ConsumerWidget {
     );
     if (!confirmed) return;
 
-    await ref.read(styleRepositoryProvider).deleteStyleProfile(userId);
+    try {
+      await ref.read(styleRepositoryProvider).deleteStyleProfile(userId);
+    } catch (_) {
+      // 서버 삭제가 실패했으면 로컬 프로필도 그대로 둔다 (서버와 어긋나지 않게).
+      if (context.mounted) {
+        showInstaToast(context, '스타일 프로필을 삭제하지 못했습니다. 다시 시도해 주세요',
+            isError: true);
+      }
+      return;
+    }
     ref.read(userStyleProfileProvider.notifier).state = null;
     if (context.mounted) {
       showInstaToast(context, '스타일 프로필이 삭제되었습니다');

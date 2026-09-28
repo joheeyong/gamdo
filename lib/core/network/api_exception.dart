@@ -1,22 +1,55 @@
+import 'package:dio/dio.dart';
+
 class ApiException implements Exception {
   final String message;
   final int? statusCode;
   final dynamic data;
 
+  /// DioException에서 만들어졌다면 그 종류. 문자열 매칭보다 정확하다.
+  final DioExceptionType? dioType;
+
   const ApiException({
     required this.message,
     this.statusCode,
     this.data,
+    this.dioType,
   });
+
+  /// DioException → ApiException. 타임아웃/연결 오류를 종류로 구분할 수 있다.
+  factory ApiException.fromDio(DioException e) => ApiException(
+        message: e.message ?? e.error?.toString() ?? 'Network error',
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+        dioType: e.type,
+      );
+
+  static const _networkTypes = {
+    DioExceptionType.connectionTimeout,
+    DioExceptionType.sendTimeout,
+    DioExceptionType.receiveTimeout,
+    DioExceptionType.connectionError,
+  };
+
+  // Dio 메시지는 'receiveTimeout', 'connectTimeout'처럼 대소문자가 섞여 있어
+  // 소문자로 바꿔 비교한다.
+  static const _networkMessageHints = [
+    'socketexception',
+    'connection refused',
+    'network is unreachable',
+    'timeout',
+    'took longer than',
+    'failed host lookup',
+    'connection errored',
+  ];
 
   /// 사용자에게 보여줄 친화적 에러 메시지.
   String get userMessage {
-    // 메시지 기반 네트워크 연결 문제 (statusCode 유무와 무관)
-    if (message.contains('SocketException') ||
-        message.contains('Connection refused') ||
-        message.contains('Network is unreachable') ||
-        message.contains('timeout') ||
-        message.contains('Failed host lookup')) {
+    // 네트워크 연결 문제 (statusCode 유무와 무관)
+    if (_networkTypes.contains(dioType)) {
+      return '인터넷 연결을 확인해 주세요';
+    }
+    final lower = message.toLowerCase();
+    if (_networkMessageHints.any(lower.contains)) {
       return '인터넷 연결을 확인해 주세요';
     }
     // 서버 에러 (5xx)

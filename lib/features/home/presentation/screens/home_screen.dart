@@ -202,9 +202,15 @@ class _AnalysisBannerState extends ConsumerState<_AnalysisBanner> {
     if (widget.state.status == StyleAnalysisStatus.completed &&
         oldWidget.state.status != StyleAnalysisStatus.completed) {
       _dismissed = false;
+      // 5초 사이 새 분석이 시작됐으면 그 상태를 지우지 않도록,
+      // 지금 완료된 실행일 때만 초기화한다.
+      final notifier = ref.read(styleAnalysisPipelineProvider.notifier);
+      final completedRun = notifier.runId;
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) {
-          ref.read(styleAnalysisPipelineProvider.notifier).reset();
+          ref
+              .read(styleAnalysisPipelineProvider.notifier)
+              .resetIfCompletedRun(completedRun);
         }
       });
     }
@@ -433,6 +439,7 @@ class _FeedCard extends StatelessWidget {
           'analysisId': record.id,
           'analysisJson': record.analysisJson,
           'imagePath': record.imagePath,
+          'transformedImagePath': record.thumbnailPath,
         },
       ),
       child: Column(
@@ -475,29 +482,17 @@ class _FeedCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Score badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.instagramGradient,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${record.overallScore}\uC810',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
           // Image (full-width, Instagram style)
           AspectRatio(
             aspectRatio: 1,
-            child: _buildImage(context, record.imagePath),
+            // 목록에 뜨는 그림은 변형(after) 결과. 없으면(v2 이전 기록) 원본.
+            child: _buildImage(
+              context,
+              record.thumbnailPath ?? record.imagePath,
+            ),
           ),
           // 액션 바 — 인스타그램 게시물의 아이콘 행
           Padding(
@@ -510,6 +505,7 @@ class _FeedCard extends StatelessWidget {
                   onTap: () => context.push(
                     AppRoutes.transform,
                     extra: {
+                      'recordId': record.id,
                       'imagePath': record.imagePath,
                       'analysisJson': record.analysisJson,
                     },
@@ -522,7 +518,6 @@ class _FeedCard extends StatelessWidget {
                     ShareParams(
                       text: '\uD83D\uDCF8 \uAC10\uB3C4 \uBD84\uC11D \uACB0\uACFC\n'
                           '\uC2A4\uD0C0\uC77C: ${record.styleCategory}\n'
-                          '\uC810\uC218: ${record.overallScore}\uC810\n\n'
                           '#\uAC10\uB3C4 #\uC0AC\uC9C4\uBD84\uC11D #AI\uCF54\uCE6D',
                     ),
                   ),
@@ -547,7 +542,7 @@ class _FeedCard extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   TextSpan(
-                    text: '  \uAC10\uB3C4 ${record.overallScore}\uC810\uC73C\uB85C \uC77D\uD614\uC5B4\uC694',
+                    text: '  \uD1A4\uC744 \uC77D\uACE0 \uB9DE\uCDA4 \uBCF4\uC815\uC744 \uC81C\uC548\uD588\uC5B4\uC694',
                     style: TextStyle(color: context.instaSecondary),
                   ),
                 ],

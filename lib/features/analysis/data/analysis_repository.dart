@@ -81,14 +81,10 @@ class AnalysisRepository {
         (analysisMap['toneReport']?['styleCategory'] as String?) ?? '분석완료';
     final colorTemp =
         (analysisMap['colorAnalysis']?['colorTemperature'] as String?) ?? 'neutral';
-    final currentScore =
-        (analysisMap['overallScore'] as num?)?.toInt() ?? 50;
-
     final id = await _database.insertAnalysis(
       AnalysisRecordsCompanion.insert(
         imagePath: savedImagePath,
         analysisJson: analysisJson,
-        overallScore: currentScore,
         styleCategory: styleCategory,
         colorTemperature: colorTemp,
       ),
@@ -120,9 +116,6 @@ class AnalysisRepository {
         (analysis['toneReport']?['styleCategory'] as String?) ?? '분석완료';
     final colorTemp =
         (analysis['colorAnalysis']?['colorTemperature'] as String?) ?? 'neutral';
-    final currentScore =
-        (analysis['overallScore'] as num?)?.toInt() ?? 50;
-
     final appDir = await getApplicationDocumentsDirectory();
     final savedImagePath = p.join(
       appDir.path,
@@ -136,7 +129,6 @@ class AnalysisRepository {
       AnalysisRecordsCompanion.insert(
         imagePath: savedImagePath,
         analysisJson: analysisJson,
-        overallScore: currentScore,
         styleCategory: styleCategory,
         colorTemperature: colorTemp,
       ),

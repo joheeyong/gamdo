@@ -225,7 +225,7 @@ class GamdoAgentDatasource {
           'split_shadow_strength': splitShadowStrength,
           'split_highlight_hue': splitHighlightHue,
           'split_highlight_strength': splitHighlightStrength,
-          if (hslAdjust != null) 'hsl_adjust': hslAdjust,
+          'hsl_adjust': ?hslAdjust,
           'face_slim': faceSlim,
           'jaw_sharpen': jawSharpen,
           'eye_enlarge': eyeEnlarge,

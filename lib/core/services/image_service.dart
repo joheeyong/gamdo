@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
@@ -94,6 +95,28 @@ class ImageService {
     final compressed = await compressImage(originalFile);
     final base64String = await imageToBase64(compressed);
     return (file: compressed, base64: base64String);
+  }
+
+  /// 변형 결과 바이트를 목록용 썸네일 파일로 저장한다.
+  ///
+  /// 축소에 실패하면 받은 바이트를 그대로 쓴다 — 목록에 사진이 안 뜨는 것보다
+  /// 큰 파일 한 장이 낫다.
+  Future<File> saveThumbnail(Uint8List bytes, String targetPath) async {
+    Uint8List out = bytes;
+    try {
+      final resized = await FlutterImageCompress.compressWithList(
+        bytes,
+        quality: ApiConstants.thumbnailJpegQuality,
+        minWidth: ApiConstants.thumbnailImageSize,
+        minHeight: ApiConstants.thumbnailImageSize,
+      );
+      if (resized.isNotEmpty) out = resized;
+    } catch (_) {
+      // 원본 바이트로 폴백
+    }
+    final file = File(targetPath);
+    await file.parent.create(recursive: true);
+    return file.writeAsBytes(out, flush: true);
   }
 
   /// 슬라이더 미리보기용 저해상도 이미지 처리 (800px, JPEG 70%)

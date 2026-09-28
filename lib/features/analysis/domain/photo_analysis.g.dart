@@ -16,13 +16,6 @@ _PhotoAnalysisResponse _$PhotoAnalysisResponseFromJson(
     json['compositionAnalysis'] as Map<String, dynamic>,
   ),
   toneReport: ToneReport.fromJson(json['toneReport'] as Map<String, dynamic>),
-  shootingTips: (json['shootingTips'] as List<dynamic>)
-      .map((e) => e as String)
-      .toList(),
-  editingTips: (json['editingTips'] as List<dynamic>)
-      .map((e) => e as String)
-      .toList(),
-  overallScore: (json['overallScore'] as num).toInt(),
   hashtags:
       (json['hashtags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
@@ -34,9 +27,6 @@ Map<String, dynamic> _$PhotoAnalysisResponseToJson(
   'colorAnalysis': instance.colorAnalysis,
   'compositionAnalysis': instance.compositionAnalysis,
   'toneReport': instance.toneReport,
-  'shootingTips': instance.shootingTips,
-  'editingTips': instance.editingTips,
-  'overallScore': instance.overallScore,
   'hashtags': instance.hashtags,
 };
 
@@ -66,12 +56,6 @@ _CompositionAnalysis _$CompositionAnalysisFromJson(Map<String, dynamic> json) =>
     _CompositionAnalysis(
       primaryTechnique: json['primaryTechnique'] as String,
       balanceScore: (json['balanceScore'] as num).toDouble(),
-      strengths: (json['strengths'] as List<dynamic>)
-          .map((e) => e as String)
-          .toList(),
-      improvements: (json['improvements'] as List<dynamic>)
-          .map((e) => e as String)
-          .toList(),
     );
 
 Map<String, dynamic> _$CompositionAnalysisToJson(
@@ -79,8 +63,6 @@ Map<String, dynamic> _$CompositionAnalysisToJson(
 ) => <String, dynamic>{
   'primaryTechnique': instance.primaryTechnique,
   'balanceScore': instance.balanceScore,
-  'strengths': instance.strengths,
-  'improvements': instance.improvements,
 };
 
 _ToneReport _$ToneReportFromJson(Map<String, dynamic> json) => _ToneReport(
