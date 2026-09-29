@@ -27,6 +27,13 @@ class SettingsRepositoryImpl implements SettingsRepository {
   Future<void> setReshapeEnabled(bool value) => _storage.setReshapeEnabled(value);
 
   @override
+  Future<bool> isSkinRetouchEnabled() => _storage.isSkinRetouchEnabled();
+
+  @override
+  Future<void> setSkinRetouchEnabled(bool value) =>
+      _storage.setSkinRetouchEnabled(value);
+
+  @override
   Future<bool> isDarkMode() => _storage.isDarkMode();
 
   @override

@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gamdo/features/analysis/di/analysis_providers.dart';
 import 'package:gamdo/features/analysis/domain/repositories/analysis_repository.dart';
 import 'package:gamdo/features/analysis/presentation/providers/batch_transform_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 typedef _Result = ({
   String analysisJson,
@@ -17,6 +18,8 @@ typedef _Result = ({
 /// 호출마다 Completer를 남겨 테스트가 응답 시점을 정하는 가짜 저장소.
 class _FakeRepo implements AnalysisRepository {
   final calls = <({File file, CancelToken? token, Completer<_Result> c})>[];
+  final skinRetouchFlags = <bool>[];
+  final reshapeFlags = <bool>[];
 
   @override
   Future<_Result> analyzeAndTransform({
@@ -24,8 +27,11 @@ class _FakeRepo implements AnalysisRepository {
     Map<String, dynamic>? styleProfile,
     String userId = '',
     bool reshapeEnabled = false,
+    bool skinRetouchEnabled = true,
     CancelToken? cancelToken,
   }) {
+    skinRetouchFlags.add(skinRetouchEnabled);
+    reshapeFlags.add(reshapeEnabled);
     final c = Completer<_Result>();
     calls.add((file: imageFile, token: cancelToken, c: c));
     return c.future;
@@ -46,6 +52,7 @@ void main() {
   late ProviderContainer container;
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     repo = _FakeRepo();
     container = ProviderContainer(overrides: [
       analysisRepositoryDIProvider.overrideWithValue(repo),
@@ -104,5 +111,43 @@ void main() {
     // reviewing이 아닌 상태(idle)에서는 아무것도 저장하지 않는다.
     expect(await notifier().saveAll(), 0);
     expect(container.read(batchTransformProvider).status, BatchStatus.idle);
+  });
+
+  test('배치 분석도 설정의 피부 보정 값을 보낸다 (기본 켜짐 / 끄면 false)', () async {
+    var run = notifier().startBatch([File('a.jpg')]);
+    await Future<void>.delayed(Duration.zero);
+    expect(repo.calls, hasLength(1));
+    repo.calls.last.c.complete(_ok());
+    await run;
+    expect(repo.skinRetouchFlags.last, isTrue);
+
+    container.dispose();
+    SharedPreferences.setMockInitialValues({'skin_retouch_enabled': false});
+    container = ProviderContainer(overrides: [
+      analysisRepositoryDIProvider.overrideWithValue(repo),
+    ]);
+    run = notifier().startBatch([File('b.jpg')]);
+    await Future<void>.delayed(Duration.zero);
+    expect(repo.calls, hasLength(2));
+    repo.calls.last.c.complete(_ok());
+    await run;
+    expect(repo.skinRetouchFlags.last, isFalse);
+  });
+
+  test('배치가 설정 화면을 연 적 없어도 저장된 얼굴/체형 보정 설정을 보낸다', () async {
+    // 예전에는 autoDispose provider를 .value ?? false로 읽어(또는 아예 안 넘겨)
+    // 켜 둔 사용자도 항상 꺼짐으로 전송됐다.
+    SharedPreferences.setMockInitialValues({'reshape_enabled': true});
+    final repo = _FakeRepo();
+    final c = ProviderContainer(overrides: [
+      analysisRepositoryDIProvider.overrideWithValue(repo),
+    ]);
+    addTearDown(c.dispose);
+    final run = c.read(batchTransformProvider.notifier).startBatch([File('a.jpg')]);
+    await Future<void>.delayed(Duration.zero);
+    expect(repo.calls, hasLength(1));
+    repo.calls.last.c.complete(_ok());
+    await run;
+    expect(repo.reshapeFlags.single, isTrue);
   });
 }

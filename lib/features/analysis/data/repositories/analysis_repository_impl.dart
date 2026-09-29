@@ -53,6 +53,7 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
     Map<String, dynamic>? styleProfile,
     String userId = '',
     bool reshapeEnabled = false,
+    bool skinRetouchEnabled = true,
     CancelToken? cancelToken,
   }) async {
     // 배치 등 기존 호출부 — 항상 새 기록을 만든다.
@@ -61,6 +62,7 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
       styleProfile: styleProfile,
       userId: userId,
       reshapeEnabled: reshapeEnabled,
+      skinRetouchEnabled: skinRetouchEnabled,
       cancelToken: cancelToken,
     );
     return (
@@ -76,6 +78,7 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
     Map<String, dynamic>? styleProfile,
     String userId = '',
     bool reshapeEnabled = false,
+    bool skinRetouchEnabled = true,
     CancelToken? cancelToken,
     int? recordId,
     void Function(AnalysisJobProgress progress)? onProgress,
@@ -87,6 +90,7 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
       styleProfile: styleProfile ?? {},
       userId: userId,
       reshapeEnabled: reshapeEnabled,
+      skinRetouchEnabled: skinRetouchEnabled,
       cancelToken: cancelToken,
       onProgress: onProgress,
     );

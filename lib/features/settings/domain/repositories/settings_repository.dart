@@ -6,6 +6,8 @@ abstract class SettingsRepository {
   Future<void> setAppToken(String token);
   Future<bool> isReshapeEnabled();
   Future<void> setReshapeEnabled(bool value);
+  Future<bool> isSkinRetouchEnabled();
+  Future<void> setSkinRetouchEnabled(bool value);
   Future<bool> isDarkMode();
   Future<void> setDarkMode(bool value);
 }

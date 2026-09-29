@@ -52,6 +52,7 @@ abstract class AnalysisRepository {
     Map<String, dynamic>? styleProfile,
     String userId,
     bool reshapeEnabled,
+    bool skinRetouchEnabled,
     CancelToken? cancelToken,
   });
 
@@ -66,6 +67,7 @@ abstract class AnalysisRepository {
     Map<String, dynamic>? styleProfile,
     String userId,
     bool reshapeEnabled,
+    bool skinRetouchEnabled,
     CancelToken? cancelToken,
     int? recordId,
     void Function(AnalysisJobProgress progress)? onProgress,

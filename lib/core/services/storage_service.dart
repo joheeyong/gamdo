@@ -24,6 +24,7 @@ class StorageService {
   static const String _instagramUserIdKey = 'instagram_user_id';
   static const String _instagramUsernameKey = 'instagram_username';
   static const String _reshapeEnabledKey = 'reshape_enabled';
+  static const String _skinRetouchEnabledKey = 'skin_retouch_enabled';
 
   // secure storage 키
   static const String _secureInstagramTokenKey = 'instagram_token';
@@ -99,6 +100,19 @@ class StorageService {
   Future<void> setReshapeEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_reshapeEnabledKey, value);
+  }
+
+  // ── 피부 보정 (잡티 제거·피부 결 정리) ──
+
+  /// 기본값은 켜짐 — 기존 사용자는 지금처럼 피부 보정을 받는다.
+  Future<bool> isSkinRetouchEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_skinRetouchEnabledKey) ?? true;
+  }
+
+  Future<void> setSkinRetouchEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_skinRetouchEnabledKey, value);
   }
 
   // ── Instagram ──

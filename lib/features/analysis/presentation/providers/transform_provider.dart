@@ -23,6 +23,33 @@ import '../../domain/entities/transform_params.dart';
 // Re-export TransformParams so existing consumers still see it here
 export '../../domain/entities/transform_params.dart';
 
+/// 피부 보정(잡티 제거·피부 스무딩)을 뺀 값.
+///
+/// 전역 값과 영역별 얼굴 값(regionParams.face)을 모두 0으로 만든다.
+/// 서버가 `skin_retouch_enabled: false` 분석에서 하는 것과 같다.
+({TransformParams params, Map<String, dynamic>? regionParams})
+    withoutSkinRetouch(
+  TransformParams params,
+  Map<String, dynamic>? regionParams,
+) {
+  Map<String, dynamic>? region = regionParams;
+  final face = regionParams?['face'];
+  if (face is Map) {
+    region = {
+      ...regionParams!,
+      'face': {
+        ...Map<String, dynamic>.from(face),
+        'skin_smoothing': 0.0,
+        'blemish_removal': 0.0,
+      },
+    };
+  }
+  return (
+    params: params.copyWith(skinSmoothing: 0.0, blemishRemoval: 0.0),
+    regionParams: region,
+  );
+}
+
 enum TransformStatus {
   idle,
   loadingAutoTransform,
@@ -251,14 +278,16 @@ class TransformNotifier extends Notifier<TransformState> {
         cachedPreviewBase64: previewBase64,
       );
 
-      final reshapeEnabled =
-          ref.read(reshapeEnabledSettingProvider).value ?? false;
+      final reshapeEnabled = await _reshapeEnabled();
+      final skinRetouchEnabled = await _skinRetouchEnabled();
+      if (!_isCurrent(token)) return null;
 
       final result = await repo.analyzeAndTransformRecord(
         imageFile: imageFile,
         styleProfile: styleProfile,
         userId: userId,
         reshapeEnabled: reshapeEnabled,
+        skinRetouchEnabled: skinRetouchEnabled,
         cancelToken: token,
         recordId: recordId,
         onProgress: (progress) {
@@ -405,7 +434,7 @@ class TransformNotifier extends Notifier<TransformState> {
       var params = transform.transformParams;
       // 설정에서 얼굴/체형 보정을 끈 것이 확인되면 저장된 체형 값을 쓰지 않는다.
       // (분석 당시 켜져 있었을 수 있다. 서버도 꺼져 있으면 0으로 계산한다.)
-      if (ref.read(reshapeEnabledSettingProvider).value == false) {
+      if (!await _reshapeEnabled()) {
         params = params.copyWith(
           faceSlim: 0.0,
           jawSharpen: 0.0,
@@ -415,6 +444,14 @@ class TransformNotifier extends Notifier<TransformState> {
           waistSlim: 0.0,
         );
       }
+      // 피부 보정을 꺼 두었으면 저장된 잡티 제거·피부 스무딩 값도 쓰지 않는다.
+      var regionParams = transform.regionParams;
+      if (!await _skinRetouchEnabled()) {
+        final stripped = withoutSkinRetouch(params, regionParams);
+        params = stripped.params;
+        regionParams = stripped.regionParams;
+      }
+      if (!_isCurrent(token)) return false;
 
       state = state.copyWith(
         cachedFullBase64: fullProcessed.base64,
@@ -423,7 +460,7 @@ class TransformNotifier extends Notifier<TransformState> {
         originalParams: params,
         paramsComment: transform.paramsComment,
         autoEdits: transform.autoEdits,
-        regionParams: transform.regionParams,
+        regionParams: regionParams,
         toneCurvePoints: transform.toneCurvePoints,
         savedImagePath: savedImagePath,
         recordId: recordId,
@@ -480,6 +517,9 @@ class TransformNotifier extends Notifier<TransformState> {
 
     try {
       final transformRepo = ref.read(transformRepositoryProvider);
+      final cancelToken = _manualCancelToken;
+      final skin = await _applySkinSetting(params, state.regionParams);
+      if (cancelToken?.isCancelled ?? false) return;
 
       // reshape이 활성화되면 고해상도로 전송 (랜드마크 검출 정확도)
       final needsReshape = params.faceSlim >= 0.01 ||
@@ -508,11 +548,11 @@ class TransformNotifier extends Notifier<TransformState> {
         imageFile: base64 == null ? imageFile : null,
         imageBase64: base64,
         preview: usePreview,
-        params: params,
+        params: skin.params,
         autoEdits: state.autoEdits,
-        regionParams: state.regionParams,
+        regionParams: skin.regionParams,
         toneCurvePoints: state.toneCurvePoints,
-        cancelToken: _manualCancelToken,
+        cancelToken: cancelToken,
       );
 
       final imageB64 = result['image_base64'] as String?;
@@ -573,22 +613,58 @@ class TransformNotifier extends Notifier<TransformState> {
   /// 현재 상태 그대로 원본에 최종 화질 변형을 태우는 요청.
   /// 저장·공유([renderForExport])와 기록 복원([openRecord])이 함께 쓴다 —
   /// 둘이 다른 요청을 만들면 복원한 After와 저장본이 달라진다.
+  ///
+  /// 설정에서 피부 보정을 끄면 잡티 제거·피부 스무딩을 0으로 보낸다 —
+  /// apply-transform은 받은 값을 그대로 쓰므로 앱이 직접 걸러야 한다.
   Future<Map<String, dynamic>> _renderFullQuality(
     File imageFile, {
     CancelToken? cancelToken,
-  }) {
+  }) async {
     final transformRepo = ref.read(transformRepositoryProvider);
     final fullBase64 = state.cachedFullBase64;
+    final skin = await _applySkinSetting(state.params, state.regionParams);
     return transformRepo.applyManualTransform(
       imageFile: fullBase64 == null ? imageFile : null,
       imageBase64: fullBase64,
       preview: false,
-      params: state.params,
+      params: skin.params,
       autoEdits: state.autoEdits,
-      regionParams: state.regionParams,
+      regionParams: skin.regionParams,
       toneCurvePoints: state.toneCurvePoints,
       cancelToken: cancelToken,
     );
+  }
+
+  /// 설정의 '피부 보정' 값. 읽지 못하면 기본값(켜짐).
+  /// '얼굴/체형 보정' 설정. 로드 전이면 기다려서 읽는다 (읽기 실패 시 꺼짐).
+  Future<bool> _reshapeEnabled() async {
+    try {
+      return await ref.read(reshapeEnabledSettingProvider.future);
+    } catch (e) {
+      developer.log('reshape setting read failed: $e', name: 'Transform');
+      return false;
+    }
+  }
+
+  Future<bool> _skinRetouchEnabled() async {
+    try {
+      return await ref.read(skinRetouchEnabledSettingProvider.future);
+    } catch (e) {
+      developer.log('skin retouch setting read failed: $e', name: 'Transform');
+      return true;
+    }
+  }
+
+  /// 피부 보정이 꺼져 있으면 apply-transform에 보낼 피부 값을 0으로 만든다.
+  Future<({TransformParams params, Map<String, dynamic>? regionParams})>
+      _applySkinSetting(
+    TransformParams params,
+    Map<String, dynamic>? regionParams,
+  ) async {
+    if (await _skinRetouchEnabled()) {
+      return (params: params, regionParams: regionParams);
+    }
+    return withoutSkinRetouch(params, regionParams);
   }
 
   Future<String?> saveTransformedImage(File imageFile) async {

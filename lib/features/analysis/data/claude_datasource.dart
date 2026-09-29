@@ -142,6 +142,7 @@ class GamdoAgentDatasource {
     String userId = '',
     String mediaType = 'image/jpeg',
     bool reshapeEnabled = false,
+    bool skinRetouchEnabled = true,
     CancelToken? cancelToken,
     void Function(AnalysisJobProgress progress)? onProgress,
   }) async {
@@ -152,6 +153,7 @@ class GamdoAgentDatasource {
       userId: userId,
       mediaType: mediaType,
       reshapeEnabled: reshapeEnabled,
+      skinRetouchEnabled: skinRetouchEnabled,
     );
 
     if (_jobsUnsupported.contains(baseUrl)) {
@@ -255,6 +257,7 @@ class GamdoAgentDatasource {
     String userId = '',
     String mediaType = 'image/jpeg',
     bool reshapeEnabled = false,
+    bool skinRetouchEnabled = true,
     CancelToken? cancelToken,
   }) async {
     final baseUrl = await _getBaseUrl();
@@ -266,6 +269,7 @@ class GamdoAgentDatasource {
         userId: userId,
         mediaType: mediaType,
         reshapeEnabled: reshapeEnabled,
+        skinRetouchEnabled: skinRetouchEnabled,
       ),
       cancelToken,
     );
@@ -307,6 +311,7 @@ class GamdoAgentDatasource {
     required String userId,
     required String mediaType,
     required bool reshapeEnabled,
+    required bool skinRetouchEnabled,
   }) =>
       {
         'image_base64': imageBase64,
@@ -316,6 +321,9 @@ class GamdoAgentDatasource {
         // 설정의 '얼굴/체형 보정' 토글. 서버로 보내지 않으면 꺼 둔 사용자도
         // 체형이 변형된다 (기본값은 꺼짐).
         'reshape_enabled': reshapeEnabled,
+        // 설정의 '피부 보정' 토글. false면 서버가 잡티 제거·피부 스무딩
+        // (영역별 얼굴 값 포함)을 0으로 만든다 (기본값은 켜짐).
+        'skin_retouch_enabled': skinRetouchEnabled,
       };
 
   Future<Map<String, dynamic>> _startJob(

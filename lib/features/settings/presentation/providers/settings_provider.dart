@@ -42,7 +42,11 @@ class AppTokenSetting extends _$AppTokenSetting {
   }
 }
 
-@riverpod
+/// 설정의 '얼굴/체형 보정' 토글 (기본 꺼짐).
+///
+/// keepAlive — autoDispose였을 때는 설정 화면이 떠 있지 않으면 분석 경로가
+/// 로딩 상태를 읽어 `?? false`로 떨어졌다. 켜 둔 사용자도 항상 꺼짐으로 전송됐다.
+@Riverpod(keepAlive: true)
 class ReshapeEnabledSetting extends _$ReshapeEnabledSetting {
   @override
   FutureOr<bool> build() async {
@@ -55,6 +59,28 @@ class ReshapeEnabledSetting extends _$ReshapeEnabledSetting {
     final newValue = !current;
     final repo = ref.read(settingsRepositoryProvider);
     await repo.setReshapeEnabled(newValue);
+    state = AsyncData(newValue);
+  }
+}
+
+/// 설정의 '피부 보정' 토글 (기본 켜짐).
+///
+/// keepAlive — 분석·저장 경로가 `.future`로 읽는다. autoDispose면 설정 화면이
+/// 떠 있지 않을 때 매번 새로 읽혀 로딩 상태를 보게 되고, 기본값(켜짐)으로
+/// 잘못 보낼 수 있다.
+@Riverpod(keepAlive: true)
+class SkinRetouchEnabledSetting extends _$SkinRetouchEnabledSetting {
+  @override
+  FutureOr<bool> build() async {
+    final repo = ref.read(settingsRepositoryProvider);
+    return await repo.isSkinRetouchEnabled();
+  }
+
+  Future<void> toggle() async {
+    final current = state.value ?? true;
+    final newValue = !current;
+    final repo = ref.read(settingsRepositoryProvider);
+    await repo.setSkinRetouchEnabled(newValue);
     state = AsyncData(newValue);
   }
 }

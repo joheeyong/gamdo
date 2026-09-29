@@ -34,6 +34,9 @@ class _FakeAnalysisRepository implements AnalysisRepository {
   Future<_Result> Function(File imageFile, CancelToken? token) next =
       (f, t) async => throw UnimplementedError();
 
+  /// 마지막 analyzeAndTransformRecord 호출이 받은 피부 보정 설정.
+  bool? lastSkinRetouchEnabled;
+
   /// 마지막 analyzeAndTransformRecord 호출이 받은 진행 콜백.
   void Function(AnalysisJobProgress progress)? lastOnProgress;
 
@@ -43,6 +46,7 @@ class _FakeAnalysisRepository implements AnalysisRepository {
     Map<String, dynamic>? styleProfile,
     String userId = '',
     bool reshapeEnabled = false,
+    bool skinRetouchEnabled = true,
     CancelToken? cancelToken,
   }) =>
       next(imageFile, cancelToken);
@@ -53,11 +57,13 @@ class _FakeAnalysisRepository implements AnalysisRepository {
     Map<String, dynamic>? styleProfile,
     String userId = '',
     bool reshapeEnabled = false,
+    bool skinRetouchEnabled = true,
     CancelToken? cancelToken,
     int? recordId,
     void Function(AnalysisJobProgress progress)? onProgress,
   }) async {
     lastOnProgress = onProgress;
+    lastSkinRetouchEnabled = skinRetouchEnabled;
     final r = await next(imageFile, cancelToken);
     return (
       recordId: recordId ?? 1,
@@ -85,6 +91,7 @@ class _FakeAnalysisRepository implements AnalysisRepository {
 
 class _FakeTransformRepository implements TransformRepository {
   TransformParams? lastParams;
+  Map<String, dynamic>? lastRegionParams;
   bool fail = false;
 
   @override
@@ -99,6 +106,7 @@ class _FakeTransformRepository implements TransformRepository {
     CancelToken? cancelToken,
   }) async {
     lastParams = params;
+    lastRegionParams = regionParams;
     if (fail) throw Exception('network');
     return {'success': true, 'image_base64': base64Encode([9, 9, 9])};
   }
@@ -180,6 +188,44 @@ void main() {
     expect(state().toneCurvePoints, isNull);
     expect(state().paramsComment, isNull);
     expect(state().params.brightness, 0.0);
+  });
+
+  test('피부 보정이 꺼져 있으면 분석에 false를, 슬라이더 미리보기엔 피부 값 0을 보낸다',
+      () async {
+    SharedPreferences.setMockInitialValues({'skin_retouch_enabled': false});
+    analysisRepo.next = (f, t) async => _result(
+          '/saved/a.jpg',
+          params: {'brightness': 0.2, 'skin_smoothing': 0.4},
+          analysis: {
+            'regionParams': {
+              'face': {'skin_smoothing': 0.3, 'blemish_removal': 0.2},
+            },
+          },
+        );
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    expect(analysisRepo.lastSkinRetouchEnabled, isFalse);
+
+    await notifier().applyManual(
+      File('/picked/a.jpg'),
+      state().params.copyWith(blemishRemoval: 0.5, brightness: 0.3),
+    );
+    expect(transformRepo.lastParams!.skinSmoothing, 0.0);
+    expect(transformRepo.lastParams!.blemishRemoval, 0.0);
+    expect(transformRepo.lastParams!.brightness, 0.3);
+    expect(transformRepo.lastRegionParams, {
+      'face': {'skin_smoothing': 0.0, 'blemish_removal': 0.0},
+    });
+  });
+
+  test('피부 보정이 켜져 있으면(기본) 분석에 true를 보내고 피부 값을 그대로 쓴다',
+      () async {
+    analysisRepo.next = (f, t) async =>
+        _result('/saved/a.jpg', params: {'skin_smoothing': 0.4});
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    expect(analysisRepo.lastSkinRetouchEnabled, isTrue);
+
+    await notifier().applyManual(File('/picked/a.jpg'), state().params);
+    expect(transformRepo.lastParams!.skinSmoothing, 0.4);
   });
 
   test('결과가 어떤 사진의 것인지 원본·저장 경로로 판별한다', () async {

@@ -47,6 +47,9 @@ class _CapturingServer {
   int analyzeCount = 0;
   late final Dio dio;
 
+  /// 분석 응답 (테스트가 바꿀 수 있다).
+  Map<String, dynamic> Function(int n) analyzeResponse = _analyzeResponse;
+
   _CapturingServer() {
     dio = Dio();
     dio.interceptors.add(InterceptorsWrapper(onRequest: (o, h) {
@@ -63,7 +66,7 @@ class _CapturingServer {
         h.resolve(Response(
           requestOptions: o,
           statusCode: 200,
-          data: _analyzeResponse(analyzeCount),
+          data: analyzeResponse(analyzeCount),
         ));
       } else if (o.path.endsWith('/api/apply-transform')) {
         h.resolve(Response(
@@ -79,6 +82,11 @@ class _CapturingServer {
       }
     }));
   }
+
+  List<RequestOptions> get analyzeRequests => [
+        for (final r in requests)
+          if (r.path.endsWith('/api/analyze-and-transform')) r,
+      ];
 
   List<RequestOptions> get applyRequests => [
         for (final r in requests)
@@ -303,6 +311,9 @@ void main() {
 
     test('transformJson이 있는 기록을 열면 AI 없이 저장·공유와 같은 요청으로 복원한다',
         () async {
+      // 체형 값이 그대로 실리는지 보려면 설정이 켜져 있어야 한다 (기본은 꺼짐 → 0)
+      SharedPreferences.setMockInitialValues(
+          {'proxy_url': 'http://test', 'reshape_enabled': true});
       final seeded = await repo.analyzeAndTransformRecord(imageFile: source);
       server.requests.clear();
       server.analyzeCount = 0;
@@ -374,6 +385,100 @@ void main() {
       expect(req['face_slim'], 0.0);
       expect(req['waist_slim'], 0.0);
       expect(req['brightness'], 0.2);
+    });
+
+    /// 피부 보정 값이 들어 있는 분석 응답 (구버전 서버 또는 켜져 있을 때 저장된 기록).
+    Map<String, dynamic> skinResponse(int n) {
+      final r = _analyzeResponse(n);
+      (r['params'] as Map<String, dynamic>)
+        ..['skin_smoothing'] = 0.4
+        ..['blemish_removal'] = 0.6;
+      (r['analysis'] as Map<String, dynamic>)['regionParams'] = {
+        'sky': {'saturation': 0.2},
+        'face': {'skin_smoothing': 0.3, 'blemish_removal': 0.5, 'brightness': 0.1},
+      };
+      return r;
+    }
+
+    test('피부 보정이 켜져 있으면(기본) 분석에 true를 보내고 복원 시 피부 값을 그대로 쓴다',
+        () async {
+      server.analyzeResponse = skinResponse;
+      await notifier().analyzeAndTransform(source);
+      expect(server.analyzeRequests.single.data['skin_retouch_enabled'], isTrue);
+      final recordId = state().recordId!;
+      final imagePath = state().savedImagePath!;
+      server.requests.clear();
+
+      await notifier().openRecord(recordId, File(imagePath));
+      final req = server.applyRequests.single.data as Map;
+      expect(req['skin_smoothing'], 0.4);
+      expect(req['blemish_removal'], 0.6);
+      expect((req['region_params'] as Map)['face'],
+          {'skin_smoothing': 0.3, 'blemish_removal': 0.5, 'brightness': 0.1});
+    });
+
+    test('설정에서 피부 보정을 끄면 분석엔 false, 복원·저장 요청엔 피부 값 0을 보낸다',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        'proxy_url': 'http://test',
+        'skin_retouch_enabled': false,
+        'reshape_enabled': true,
+      });
+      server.analyzeResponse = skinResponse;
+
+      await notifier().analyzeAndTransform(source);
+      final analyzeReq = server.analyzeRequests.single.data as Map;
+      expect(analyzeReq['skin_retouch_enabled'], isFalse);
+      final recordId = state().recordId!;
+      final imagePath = state().savedImagePath!;
+      server.requests.clear();
+
+      await notifier().openRecord(recordId, File(imagePath));
+      expect(server.analyzeCount, 1, reason: '복원은 AI를 부르지 않는다');
+      final restoreReq = server.applyRequests.single.data as Map;
+      expect(restoreReq['skin_smoothing'], 0.0);
+      expect(restoreReq['blemish_removal'], 0.0);
+      expect(restoreReq['region_params'], {
+        'sky': {'saturation': 0.2},
+        'face': {'skin_smoothing': 0.0, 'blemish_removal': 0.0, 'brightness': 0.1},
+      });
+      // 피부 외 값은 그대로
+      expect(restoreReq['brightness'], 0.2);
+      expect(restoreReq['face_slim'], 0.3);
+      expect(state().params.skinSmoothing, 0.0);
+      expect(state().params.blemishRemoval, 0.0);
+
+      // 저장된 기록 자체는 건드리지 않는다 — 다시 켜면 되살아난다
+      final stored = StoredTransform.tryDecode(
+          (await db.getAnalysisById(recordId))!.transformJson)!;
+      expect(stored.transformParams.skinSmoothing, 0.4);
+
+      await notifier().renderForExport(File(imagePath));
+      final exportReq = server.applyRequests.last.data as Map;
+      expect(exportReq, equals(restoreReq));
+    });
+
+    test('분석 뒤 피부 보정을 끄면 저장·공유 요청에서 피부 값을 0으로 보낸다', () async {
+      server.analyzeResponse = skinResponse;
+      await notifier().analyzeAndTransform(source);
+      container.listen(skinRetouchEnabledSettingProvider, (_, _) {});
+      expect(await container.read(skinRetouchEnabledSettingProvider.future),
+          isTrue);
+
+      await notifier().renderForExport(source);
+      var req = server.applyRequests.last.data as Map;
+      expect(req['skin_smoothing'], 0.4);
+      expect(req['blemish_removal'], 0.6);
+
+      await container.read(skinRetouchEnabledSettingProvider.notifier).toggle();
+      await notifier().renderForExport(source);
+      req = server.applyRequests.last.data as Map;
+      expect(req['skin_smoothing'], 0.0);
+      expect(req['blemish_removal'], 0.0);
+      expect(((req['region_params'] as Map)['face'] as Map)['skin_smoothing'],
+          0.0);
+      expect(((req['region_params'] as Map)['face'] as Map)['blemish_removal'],
+          0.0);
     });
 
     test('transformJson이 없는 옛 기록은 한 번 분석하되 그 기록을 갱신한다', () async {

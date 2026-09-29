@@ -31,6 +31,8 @@ class SettingsScreen extends ConsumerWidget {
     final isDarkMode = ref.watch(themeModeProvider);
     final reshapeAsync = ref.watch(reshapeEnabledSettingProvider);
     final isReshapeEnabled = reshapeAsync.value ?? false;
+    final skinRetouchAsync = ref.watch(skinRetouchEnabledSettingProvider);
+    final isSkinRetouchEnabled = skinRetouchAsync.value ?? true;
     final styleProfile = ref.watch(userStyleProfileProvider);
     final auth = ref.watch(instagramAuthProvider);
 
@@ -81,6 +83,19 @@ class SettingsScreen extends ConsumerWidget {
               activeTrackColor: AppColors.primary,
               onChanged: (_) =>
                   ref.read(reshapeEnabledSettingProvider.notifier).toggle(),
+            ),
+          ),
+          const InstaHairline(indent: 16),
+          InstaSettingRow(
+            icon: Icons.auto_fix_high_outlined,
+            title: '피부 보정',
+            subtitle: '잡티 제거·피부 결 정리',
+            trailing: Switch.adaptive(
+              value: isSkinRetouchEnabled,
+              activeThumbColor: Colors.white,
+              activeTrackColor: AppColors.primary,
+              onChanged: (_) =>
+                  ref.read(skinRetouchEnabledSettingProvider.notifier).toggle(),
             ),
           ),
           const InstaHairline(),

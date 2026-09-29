@@ -187,6 +187,8 @@ void main() {
       'user_id': 'u1',
       'media_type': 'image/jpeg',
       'reshape_enabled': true,
+      // 피부 보정 토글 — 넘기지 않으면 기본값(켜짐)
+      'skin_retouch_enabled': true,
     });
     expect(server.pollRequests, hasLength(4));
     expect(server.pollRequests.every((r) => r.uri.path.endsWith('/api/jobs/job1')),
@@ -262,6 +264,7 @@ void main() {
       expect(result, _result('SYNC'));
       expect(server.startRequests, hasLength(1));
       expect(server.syncRequests.single.data['reshape_enabled'], isTrue);
+      expect(server.syncRequests.single.data['skin_retouch_enabled'], isTrue);
       expect(server.pollRequests, isEmpty);
       expect(progress.single.resumable, isFalse);
 
@@ -270,6 +273,41 @@ void main() {
       expect(server.startRequests, hasLength(1), reason: 'code $code');
       expect(server.syncRequests, hasLength(2));
     }
+  });
+
+  test('피부 보정을 끄면 작업 API·동기 폴백 모두 skin_retouch_enabled=false를 보낸다',
+      () async {
+    server.starts.add(_started('job1', 'done'));
+    server.polls.add(_job('done', 'done', 10, result: _result()));
+
+    final ds = datasource();
+    await ds.analyzeAndTransform(
+      imageBase64: 'B64',
+      styleProfile: const {},
+      skinRetouchEnabled: false,
+    );
+    expect(server.startRequests.single.data['skin_retouch_enabled'], isFalse);
+
+    // startAnalyzeJob도 같은 본문을 만든다
+    await ds.startAnalyzeJob(
+      imageBase64: 'B64',
+      styleProfile: const {},
+      skinRetouchEnabled: false,
+    );
+    expect(server.startRequests.last.data['skin_retouch_enabled'], isFalse);
+
+    // 구버전 서버(작업 API 404) → 동기 엔드포인트에도 그대로 실린다
+    server = _FakeServer();
+    server.starts.add((_) => _Reply.status(404, {'detail': 'Not Found'}));
+    server.sync = (_) => _Reply.status(200, _result('SYNC'));
+    await datasource().analyzeAndTransform(
+      imageBase64: 'B64',
+      styleProfile: const {},
+      skinRetouchEnabled: false,
+    );
+    expect(server.startRequests.single.data['skin_retouch_enabled'], isFalse);
+    expect(server.syncRequests.single.data['skin_retouch_enabled'], isFalse);
+    expect(server.syncRequests.single.data['reshape_enabled'], isFalse);
   });
 
   test('폴링 중 job_not_found(서버 재시작)면 작업을 한 번 다시 시작한다', () async {

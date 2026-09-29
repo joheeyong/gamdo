@@ -12,6 +12,7 @@ import 'package:path/path.dart' as p;
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/providers/style_profile_provider.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../di/analysis_providers.dart';
 
 enum BatchStatus {
@@ -120,6 +121,19 @@ class BatchTransformNotifier extends Notifier<BatchTransformState> {
       userId = authState.userId ?? '';
     } catch (_) {}
 
+    // 설정의 '피부 보정' — 꺼 두었으면 서버가 잡티 제거·피부 스무딩을 뺀다.
+    bool skinRetouchEnabled = true;
+    try {
+      skinRetouchEnabled =
+          await ref.read(skinRetouchEnabledSettingProvider.future);
+    } catch (_) {}
+    // 설정의 '얼굴/체형 보정' — 예전에는 배치가 이 값을 넘기지 않아 항상 꺼짐이었다.
+    bool reshapeEnabled = false;
+    try {
+      reshapeEnabled = await ref.read(reshapeEnabledSettingProvider.future);
+    } catch (_) {}
+    if (isStale()) return;
+
     final results = <BatchItemResult>[];
 
     for (int i = 0; i < files.length; i++) {
@@ -131,6 +145,8 @@ class BatchTransformNotifier extends Notifier<BatchTransformState> {
           imageFile: files[i],
           styleProfile: styleProfile,
           userId: userId,
+          reshapeEnabled: reshapeEnabled,
+          skinRetouchEnabled: skinRetouchEnabled,
           cancelToken: cancelToken,
         );
         if (isStale()) return;
