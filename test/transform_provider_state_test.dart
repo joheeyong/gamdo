@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gamdo/core/services/image_service.dart';
 import 'package:gamdo/features/analysis/di/analysis_providers.dart';
+import 'package:gamdo/features/analysis/domain/entities/analysis_job_progress.dart';
 import 'package:gamdo/features/analysis/domain/repositories/analysis_repository.dart';
 import 'package:gamdo/features/analysis/domain/repositories/transform_repository.dart';
 import 'package:gamdo/features/analysis/presentation/providers/transform_provider.dart';
@@ -33,6 +34,9 @@ class _FakeAnalysisRepository implements AnalysisRepository {
   Future<_Result> Function(File imageFile, CancelToken? token) next =
       (f, t) async => throw UnimplementedError();
 
+  /// 마지막 analyzeAndTransformRecord 호출이 받은 진행 콜백.
+  void Function(AnalysisJobProgress progress)? lastOnProgress;
+
   @override
   Future<_Result> analyzeAndTransform({
     required File imageFile,
@@ -51,7 +55,9 @@ class _FakeAnalysisRepository implements AnalysisRepository {
     bool reshapeEnabled = false,
     CancelToken? cancelToken,
     int? recordId,
+    void Function(AnalysisJobProgress progress)? onProgress,
   }) async {
+    lastOnProgress = onProgress;
     final r = await next(imageFile, cancelToken);
     return (
       recordId: recordId ?? 1,
@@ -262,5 +268,39 @@ void main() {
 
     transformRepo.fail = true;
     expect(await notifier().renderForExport(File('/picked/a.jpg')), isNull);
+  });
+
+  test('분석 진행 단계가 로딩 중 상태에 반영되고, 밀린 요청의 알림은 무시된다', () async {
+    final first = Completer<_Result>();
+    analysisRepo.next = (f, t) => first.future;
+    final f1 = notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    await pumpEventQueue();
+    final oldProgress = analysisRepo.lastOnProgress!;
+
+    oldProgress(const AnalysisJobProgress(
+      stage: AnalysisJobStage.analyzing,
+      elapsed: Duration(seconds: 3),
+    ));
+    expect(state().status, TransformStatus.loadingAutoTransform);
+    expect(state().analysisProgress?.stage, AnalysisJobStage.analyzing);
+    expect(state().analysisProgress?.elapsed, const Duration(seconds: 3));
+
+    // 새 요청이 시작되면 진행 상황도 비워지고, 이전 요청의 알림은 버린다
+    final second = Completer<_Result>();
+    analysisRepo.next = (f, t) => second.future;
+    final f2 = notifier().analyzeAndTransform(File('/picked/b.jpg'));
+    await pumpEventQueue();
+    expect(state().analysisProgress, isNull);
+    oldProgress(const AnalysisJobProgress(stage: AnalysisJobStage.rendering));
+    expect(state().analysisProgress, isNull);
+
+    analysisRepo.lastOnProgress!(
+        const AnalysisJobProgress(stage: AnalysisJobStage.rendering));
+    expect(state().analysisProgress?.stage, AnalysisJobStage.rendering);
+
+    first.complete(_result('/saved/a.jpg'));
+    second.complete(_result('/saved/b.jpg'));
+    await Future.wait([f1, f2]);
+    expect(state().status, TransformStatus.ready);
   });
 }

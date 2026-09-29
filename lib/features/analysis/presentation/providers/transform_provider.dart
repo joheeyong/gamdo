@@ -15,6 +15,7 @@ import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../../../core/providers/style_profile_provider.dart';
 import '../../../../core/services/image_service.dart';
 import '../../di/analysis_providers.dart';
+import '../../domain/entities/analysis_job_progress.dart';
 import '../../domain/entities/stored_transform.dart';
 import '../../domain/repositories/analysis_repository.dart';
 import '../../domain/entities/transform_params.dart';
@@ -69,6 +70,10 @@ class TransformState {
   /// 로딩이 AI 분석이 아니라 저장된 값으로 다시 그리는 중인지 (문구용).
   final bool restoring;
 
+  /// AI 분석 진행 상황(서버 작업 단계·경과). 대기 화면 문구용 — 아직
+  /// 서버가 알려 주지 않았으면 null.
+  final AnalysisJobProgress? analysisProgress;
+
   const TransformState({
     this.status = TransformStatus.idle,
     this.params = const TransformParams(),
@@ -86,6 +91,7 @@ class TransformState {
     this.savedImagePath,
     this.recordId,
     this.restoring = false,
+    this.analysisProgress,
   });
 
   /// 이 상태(변형 결과)가 [imagePath] 사진의 것인지.
@@ -119,6 +125,7 @@ class TransformState {
     String? savedImagePath,
     int? recordId,
     bool? restoring,
+    AnalysisJobProgress? analysisProgress,
   }) {
     return TransformState(
       status: status ?? this.status,
@@ -137,6 +144,7 @@ class TransformState {
       savedImagePath: savedImagePath ?? this.savedImagePath,
       recordId: recordId ?? this.recordId,
       restoring: restoring ?? this.restoring,
+      analysisProgress: analysisProgress ?? this.analysisProgress,
     );
   }
 }
@@ -253,6 +261,14 @@ class TransformNotifier extends Notifier<TransformState> {
         reshapeEnabled: reshapeEnabled,
         cancelToken: token,
         recordId: recordId,
+        onProgress: (progress) {
+          // 새 요청에 밀렸거나 이미 끝난 요청의 진행 알림은 버린다
+          if (!_isCurrent(token) ||
+              state.status != TransformStatus.loadingAutoTransform) {
+            return;
+          }
+          state = state.copyWith(analysisProgress: progress);
+        },
       );
       if (!_isCurrent(token)) return null;
 

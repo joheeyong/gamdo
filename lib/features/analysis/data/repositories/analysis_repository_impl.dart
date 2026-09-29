@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import '../../../../core/services/database.dart';
 import '../../../../core/services/image_service.dart';
 import '../../../../core/services/stored_path.dart';
+import '../../domain/entities/analysis_job_progress.dart';
 import '../../domain/entities/stored_transform.dart';
 import '../../domain/repositories/analysis_repository.dart';
 import '../claude_datasource.dart';
@@ -77,6 +78,7 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
     bool reshapeEnabled = false,
     CancelToken? cancelToken,
     int? recordId,
+    void Function(AnalysisJobProgress progress)? onProgress,
   }) async {
     final processed = await _imageService.processImage(imageFile);
 
@@ -86,6 +88,7 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
       userId: userId,
       reshapeEnabled: reshapeEnabled,
       cancelToken: cancelToken,
+      onProgress: onProgress,
     );
 
     final analysis = result['analysis'] as Map<String, dynamic>? ?? {};

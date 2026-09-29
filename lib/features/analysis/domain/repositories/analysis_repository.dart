@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
+import '../entities/analysis_job_progress.dart';
 import '../entities/stored_transform.dart';
 
 /// [AnalysisRepository.analyzeAndTransformRecord]의 결과 — 기록 id 포함.
@@ -59,6 +60,7 @@ abstract class AnalysisRepository {
   /// [recordId]가 있으면 새 행을 만들지 않고 그 기록을 갱신한다 — 원본은
   /// 다시 복사하지 않고, 썸네일만 새로 만들어 바꾼다 (다시 분석/재시도,
   /// transformJson이 없는 옛 기록 열기). 그 기록이 사라졌으면 새로 만든다.
+  /// [onProgress]는 서버 작업의 단계(대기/분석/렌더링)와 경과 시간을 받는다.
   Future<AnalyzeRecordResult> analyzeAndTransformRecord({
     required File imageFile,
     Map<String, dynamic>? styleProfile,
@@ -66,6 +68,7 @@ abstract class AnalysisRepository {
     bool reshapeEnabled,
     CancelToken? cancelToken,
     int? recordId,
+    void Function(AnalysisJobProgress progress)? onProgress,
   });
 
   /// 기록 하나를 읽는다. 없으면 null.

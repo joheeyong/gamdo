@@ -5,12 +5,15 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
+import 'core/services/app_resume_signal.dart';
 import 'features/settings/presentation/providers/theme_provider.dart';
 import 'firebase_options.dart';
 
 void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    // 분석 작업 폴링이 foreground 복귀 즉시 결과를 조회하도록 신호를 붙인다.
+    AppResumeSignal.instance.attach();
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );

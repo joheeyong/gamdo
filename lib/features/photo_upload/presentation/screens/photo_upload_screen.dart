@@ -13,6 +13,7 @@ import '../../../../core/services/image_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
+import '../../../analysis/domain/entities/analysis_job_progress.dart';
 import '../../../analysis/presentation/transform_provider.dart';
 
 class PhotoUploadScreen extends ConsumerStatefulWidget {
@@ -180,6 +181,9 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
           child: isLoading
               ? _AnalysisWaitingView(
                   image: _selectedImage!,
+                  progress: ref.watch(
+                    transformProvider.select((s) => s.analysisProgress),
+                  ),
                   onCancel: _cancelAnalysis,
                   onRetry: _startAnalysis,
                 )
@@ -273,10 +277,14 @@ class _UploadView extends StatelessWidget {
 
 class _AnalysisWaitingView extends StatefulWidget {
   final File image;
+
+  /// 서버 작업 단계·경과. 아직 모르면 null.
+  final AnalysisJobProgress? progress;
   final VoidCallback onCancel;
   final VoidCallback onRetry;
   const _AnalysisWaitingView({
     required this.image,
+    this.progress,
     required this.onCancel,
     required this.onRetry,
   });
@@ -408,13 +416,32 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
       );
     });
 
-    // 분석 단계 진행: 3초마다
+    // 분석 단계 진행: 3초마다. 서버가 아직 대기 중이라고 하면 넘기지 않는다.
     _stepTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!mounted) return;
-      if (_currentStep < _analysisSteps.length - 1) {
+      if (widget.progress?.stage == AnalysisJobStage.queued) return;
+      // 마지막 단계(최종 정리)는 서버가 렌더링에 들어갔을 때 보여 준다
+      final lastAuto = _isJob ? _analysisSteps.length - 2 : _analysisSteps.length - 1;
+      if (_currentStep < lastAuto) {
         setState(() => _currentStep++);
       }
     });
+  }
+
+  /// 서버 작업(job)으로 돌고 있는지 — 앱을 나갔다 와도 결과를 받는다.
+  bool get _isJob => widget.progress?.resumable ?? false;
+
+  @override
+  void didUpdateWidget(covariant _AnalysisWaitingView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final progress = widget.progress;
+    if (progress == null) return;
+    // 백그라운드에 있는 동안 멈춘 로컬 타이머를 서버 경과 시간에 맞춘다
+    if (progress.elapsed > _elapsed) _elapsed = progress.elapsed;
+    if (progress.stage == AnalysisJobStage.rendering ||
+        progress.stage == AnalysisJobStage.done) {
+      _currentStep = _analysisSteps.length - 1;
+    }
   }
 
   @override
@@ -427,7 +454,8 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
       _backgroundedAt = null;
       // 짧게 다녀온 정도로는 연결이 끊기지 않는다. 오래 비웠으면 알려 준다 —
       // 조용히 두면 응답 대기 제한(2분)이 다 찰 때까지 멈춘 화면만 보인다.
-      if (away.inSeconds >= 10 && mounted) {
+      // 서버 작업(job)으로 돌고 있으면 돌아와서 결과를 다시 받으므로 알리지 않는다.
+      if (away.inSeconds >= 10 && mounted && !_isJob) {
         setState(() => _interrupted = true);
       }
     }
@@ -460,6 +488,7 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
   @override
   Widget build(BuildContext context) {
     final step = _analysisSteps[_currentStep];
+    final stage = widget.progress?.stage;
 
     return Column(
       children: [
@@ -512,6 +541,18 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
                       ),
                     ),
                     const SizedBox(height: 20),
+                    // 서버가 알려 준 실제 단계 (대기 중 / 분석 / 보정 적용)
+                    if (stage != null && stage != AnalysisJobStage.done) ...[
+                      Text(
+                        stage.message,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
                     // 단계 텍스트
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
@@ -554,6 +595,17 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
                         ),
                       ),
                     ),
+                    if (_isJob) ...[
+                      const SizedBox(height: 14),
+                      Text(
+                        // 앱을 잠시 나가도 분석은 계속돼요
+                        '\uC571\uC744 \uC7A0\uC2DC \uB098\uAC00\uB3C4 \uBD84\uC11D\uC740 \uACC4\uC18D\uB3FC\uC694',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -561,7 +613,8 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
           ),
         ),
 
-        if (_interrupted) _InterruptedBanner(onRetry: widget.onRetry),
+        if (_interrupted && !_isJob)
+          _InterruptedBanner(onRetry: widget.onRetry),
 
         // 하단: 사진 팁 카드 슬라이드
         Expanded(

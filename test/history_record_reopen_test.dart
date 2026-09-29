@@ -51,7 +51,14 @@ class _CapturingServer {
     dio = Dio();
     dio.interceptors.add(InterceptorsWrapper(onRequest: (o, h) {
       requests.add(o);
-      if (o.path.endsWith('/api/analyze-and-transform')) {
+      if (o.path.contains('/api/jobs/')) {
+        // 분석 작업 API가 없는 구버전 서버 — 앱은 동기 엔드포인트로 폴백한다.
+        h.reject(DioException(
+          requestOptions: o,
+          type: DioExceptionType.badResponse,
+          response: Response(requestOptions: o, statusCode: 404),
+        ));
+      } else if (o.path.endsWith('/api/analyze-and-transform')) {
         analyzeCount++;
         h.resolve(Response(
           requestOptions: o,

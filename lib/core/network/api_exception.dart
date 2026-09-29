@@ -52,6 +52,11 @@ class ApiException implements Exception {
     if (_networkMessageHints.any(lower.contains)) {
       return '인터넷 연결을 확인해 주세요';
     }
+    // 서버가 바쁨 (분석 작업 대기열이 가득 참: 503 error_code busy)
+    final body = data;
+    if (body is Map && body['error_code'] == 'busy') {
+      return '요청이 많아요. 잠시 후 다시 시도해 주세요';
+    }
     // 서버 에러 (5xx)
     if (statusCode != null && statusCode! >= 500) {
       return '서버에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요';

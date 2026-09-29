@@ -280,9 +280,20 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
                                 TransformStatus.loadingAutoTransform
                         // 변형 결과를 불러오는 중...
                         ? '\uBCC0\uD615 \uACB0\uACFC\uB97C \uBD88\uB7EC\uC624\uB294 \uC911...'
-                        : 'AI\uAC00 \uC0AC\uC9C4\uC744 \uBD84\uC11D\uD558\uACE0 \uBCC0\uD615\uD558\uB294 \uC911...',
+                        // 서버 작업 단계가 오면 그 문구 (대기 중 / 분석 / 보정 적용)
+                        : transformState.analysisProgress?.stage.message ??
+                            'AI\uAC00 \uC0AC\uC9C4\uC744 \uBD84\uC11D\uD558\uACE0 \uBCC0\uD615\uD558\uB294 \uC911...',
                     style: TextStyle(fontSize: 14, color: context.instaSecondary),
                   ),
+                  if (!transformState.restoring &&
+                      transformState.analysisProgress?.resumable == true) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      // 앱을 잠시 나가도 분석은 계속돼요
+                      '\uC571\uC744 \uC7A0\uC2DC \uB098\uAC00\uB3C4 \uBD84\uC11D\uC740 \uACC4\uC18D\uB3FC\uC694',
+                      style: TextStyle(fontSize: 12, color: context.instaSecondary),
+                    ),
+                  ],
                 ],
               ),
             )
