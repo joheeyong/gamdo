@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gamdo/core/providers/style_profile_provider.dart';
 import 'package:gamdo/features/analysis/di/analysis_providers.dart';
 import 'package:gamdo/features/analysis/domain/repositories/analysis_repository.dart';
 import 'package:gamdo/features/analysis/presentation/providers/batch_transform_provider.dart';
@@ -20,6 +21,7 @@ class _FakeRepo implements AnalysisRepository {
   final calls = <({File file, CancelToken? token, Completer<_Result> c})>[];
   final skinRetouchFlags = <bool>[];
   final reshapeFlags = <bool>[];
+  final styleProfiles = <Map<String, dynamic>?>[];
 
   @override
   Future<_Result> analyzeAndTransform({
@@ -32,6 +34,7 @@ class _FakeRepo implements AnalysisRepository {
   }) {
     skinRetouchFlags.add(skinRetouchEnabled);
     reshapeFlags.add(reshapeEnabled);
+    styleProfiles.add(styleProfile);
     final c = Completer<_Result>();
     calls.add((file: imageFile, token: cancelToken, c: c));
     return c.future;
@@ -149,5 +152,26 @@ void main() {
     repo.calls.last.c.complete(_ok());
     await run;
     expect(repo.reshapeFlags.single, isTrue);
+  });
+
+  test('배치도 설정의 보정 스타일로 trendCategory를 바꿔 보낸다 (프로필은 그대로)',
+      () async {
+    SharedPreferences.setMockInitialValues({'edit_style': 'soft_pastel'});
+    final repo = _FakeRepo();
+    final c = ProviderContainer(overrides: [
+      analysisRepositoryDIProvider.overrideWithValue(repo),
+    ]);
+    addTearDown(c.dispose);
+    c.read(userStyleProfileProvider.notifier).state = {
+      'trendCategory': 'clean_minimal',
+    };
+    final run = c.read(batchTransformProvider.notifier).startBatch([File('a.jpg')]);
+    await Future<void>.delayed(Duration.zero);
+    expect(repo.calls, hasLength(1));
+    repo.calls.last.c.complete(_ok());
+    await run;
+    expect(repo.styleProfiles.single,
+        {'trendCategory': 'soft_pastel', 'styleSource': 'manual'});
+    expect(c.read(userStyleProfileProvider), {'trendCategory': 'clean_minimal'});
   });
 }

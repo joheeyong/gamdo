@@ -361,6 +361,7 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
                     _AppliedTransformsSummary(
                       params: transformState.params,
                       comment: transformState.paramsComment,
+                      styleName: transformState.appliedStyleName,
                     ),
 
                     const SizedBox(height: 16),
@@ -382,7 +383,8 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
 class _SectionTitle extends StatelessWidget {
   final IconData icon;
   final String title;
-  const _SectionTitle({required this.icon, required this.title});
+  final Widget? trailing;
+  const _SectionTitle({required this.icon, required this.title, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -400,6 +402,10 @@ class _SectionTitle extends StatelessWidget {
               color: context.instaPrimaryText,
             ),
           ),
+          if (trailing != null) ...[
+            const Spacer(),
+            trailing!,
+          ],
         ],
       ),
     );
@@ -414,7 +420,14 @@ class _AppliedTransformsSummary extends StatelessWidget {
   /// 서버가 계산한 보정 이유 한 문장.
   final String? comment;
 
-  const _AppliedTransformsSummary({required this.params, this.comment});
+  /// 설정에서 고른 보정 스타일 이름 (자동이면 null).
+  final String? styleName;
+
+  const _AppliedTransformsSummary({
+    required this.params,
+    this.comment,
+    this.styleName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -520,7 +533,17 @@ class _AppliedTransformsSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionTitle(icon: Icons.auto_awesome_outlined, title: '\uC801\uC6A9\uB41C \uBCC0\uD615'),
+          _SectionTitle(
+            icon: Icons.auto_awesome_outlined,
+            title: '\uC801\uC6A9\uB41C \uBCC0\uD615',
+            trailing: styleName == null
+                ? null
+                : Text(
+                    '\uBCF4\uC815 \uC2A4\uD0C0\uC77C \u00B7 $styleName',
+                    style: AppTypography.meta
+                        .copyWith(color: context.instaSecondary),
+                  ),
+          ),
           if (comment != null && comment!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),

@@ -101,6 +101,10 @@ class TransformState {
   /// 서버가 알려 주지 않았으면 null.
   final AnalysisJobProgress? analysisProgress;
 
+  /// 이번 분석에 쓴 보정 스타일 이름 (설정에서 직접 골랐을 때만).
+  /// 자동이거나 기록에서 복원한 결과면 null.
+  final String? appliedStyleName;
+
   const TransformState({
     this.status = TransformStatus.idle,
     this.params = const TransformParams(),
@@ -119,6 +123,7 @@ class TransformState {
     this.recordId,
     this.restoring = false,
     this.analysisProgress,
+    this.appliedStyleName,
   });
 
   /// 이 상태(변형 결과)가 [imagePath] 사진의 것인지.
@@ -153,6 +158,7 @@ class TransformState {
     int? recordId,
     bool? restoring,
     AnalysisJobProgress? analysisProgress,
+    String? appliedStyleName,
   }) {
     return TransformState(
       status: status ?? this.status,
@@ -172,6 +178,7 @@ class TransformState {
       recordId: recordId ?? this.recordId,
       restoring: restoring ?? this.restoring,
       analysisProgress: analysisProgress ?? this.analysisProgress,
+      appliedStyleName: appliedStyleName ?? this.appliedStyleName,
     );
   }
 }
@@ -261,7 +268,6 @@ class TransformNotifier extends Notifier<TransformState> {
     try {
       final repo = ref.read(analysisRepositoryDIProvider);
       final imageService = ref.read(imageServiceProvider);
-      final styleProfile = ref.read(userStyleProfileProvider);
 
       String userId = '';
       try {
@@ -280,7 +286,11 @@ class TransformNotifier extends Notifier<TransformState> {
 
       final reshapeEnabled = await _reshapeEnabled();
       final skinRetouchEnabled = await _skinRetouchEnabled();
+      // 설정의 '보정 스타일'을 반영한 프로필 (자동이면 저장된 프로필 그대로)
+      final style = await resolveRequestStyle(ref);
+      final styleProfile = style.profile;
       if (!_isCurrent(token)) return null;
+      final manualStyle = editStyleById(style.choice);
 
       final result = await repo.analyzeAndTransformRecord(
         imageFile: imageFile,
@@ -330,6 +340,7 @@ class TransformNotifier extends Notifier<TransformState> {
         toneCurvePoints: paramsMap?['tone_curve_points'] as List<dynamic>?,
         savedImagePath: result.imagePath,
         recordId: result.recordId,
+        appliedStyleName: manualStyle?.name,
       );
       _bytesAreFullQuality = true;
 

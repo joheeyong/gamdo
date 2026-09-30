@@ -14,7 +14,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
 import '../../../analysis/domain/entities/analysis_job_progress.dart';
+import '../../../analysis/presentation/providers/analysis_provider.dart';
 import '../../../analysis/presentation/transform_provider.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
+import '../../../settings/presentation/widgets/edit_style_picker.dart';
 
 class PhotoUploadScreen extends ConsumerStatefulWidget {
   const PhotoUploadScreen({super.key});
@@ -46,13 +49,46 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   Future<void> _pickMultiple() async {
     final imageService = ref.read(imageServiceProvider);
     final files = await imageService.pickMultipleFromGallery();
-    if (files.isNotEmpty && mounted) {
-      context.push(AppRoutes.batchTransform, extra: {'imageFiles': files});
+    if (files.isEmpty || !mounted) return;
+    await _maybePromptEditStyle();
+    if (!mounted) return;
+    context.push(AppRoutes.batchTransform, extra: {'imageFiles': files});
+  }
+
+  /// 인스타 분석 프로필이 없고(게시글 0개·분석 실패) 보정 스타일이 '자동'이면
+  /// 첫 분석 직전에 한 번만 스타일을 고르게 한다. 닫으면 자동(서버 기본 레시피).
+  Future<void> _maybePromptEditStyle() async {
+    try {
+      final choice = await ref.read(editStyleSettingProvider.future);
+      final pipeline = ref.read(styleAnalysisPipelineProvider).status;
+      final inProgress = pipeline == StyleAnalysisStatus.fetchingMedia ||
+          pipeline == StyleAnalysisStatus.analyzingStyle ||
+          pipeline == StyleAnalysisStatus.savingProfile;
+      final show = await claimEditStylePrompt(
+        ref.read(settingsRepositoryProvider),
+        profile: ref.read(userStyleProfileProvider),
+        choice: choice,
+        styleAnalysisInProgress: inProgress,
+      );
+      if (!show || !mounted) return;
+      final picked = await showEditStylePicker(
+        context,
+        current: choice,
+        title: '\uC5B4\uB5A4 \uB290\uB08C\uC73C\uB85C \uBCF4\uC815\uD560\uAE4C\uC694?',
+        message: '\uC778\uC2A4\uD0C0\uADF8\uB7A8 \uD53C\uB4DC\uC5D0\uC11C \uC2A4\uD0C0\uC77C\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC5B4\uC694. \uC6D0\uD558\uB294 \uB8E9\uC744 \uACE8\uB77C \uC8FC\uC138\uC694.\n\uB2EB\uC73C\uBA74 \uAE30\uBCF8 \uBCF4\uC815\uC73C\uB85C \uC9C4\uD589\uD558\uACE0, \uC124\uC815\uC5D0\uC11C \uC5B8\uC81C\uB4E0 \uBC14\uAFC0 \uC218 \uC788\uC5B4\uC694.',
+      );
+      if (picked != null && picked != choice) {
+        await ref.read(editStyleSettingProvider.notifier).select(picked);
+      }
+    } catch (_) {
+      // 안내는 부가 기능 — 실패해도 분석은 그대로 진행한다.
     }
   }
 
   Future<void> _startAnalysis() async {
     if (_selectedImage == null) return;
+    await _maybePromptEditStyle();
+    if (!mounted || _selectedImage == null) return;
     final generation = ++_analysisGeneration;
     setState(() => _isProcessing = true);
 

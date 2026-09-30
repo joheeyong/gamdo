@@ -34,6 +34,18 @@ class SettingsRepositoryImpl implements SettingsRepository {
       _storage.setSkinRetouchEnabled(value);
 
   @override
+  Future<String?> getEditStyle() => _storage.getEditStyle();
+
+  @override
+  Future<void> setEditStyle(String value) => _storage.setEditStyle(value);
+
+  @override
+  Future<bool> isEditStylePrompted() => _storage.isEditStylePrompted();
+
+  @override
+  Future<void> setEditStylePrompted() => _storage.setEditStylePrompted();
+
+  @override
   Future<bool> isDarkMode() => _storage.isDarkMode();
 
   @override

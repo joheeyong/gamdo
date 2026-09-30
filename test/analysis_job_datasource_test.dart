@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gamdo/core/network/api_exception.dart';
 import 'package:gamdo/features/analysis/data/claude_datasource.dart';
 import 'package:gamdo/features/analysis/domain/entities/analysis_job_progress.dart';
+import 'package:gamdo/features/settings/domain/entities/edit_style.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 서버 대신 응답하는 가짜. 경로별 응답을 테스트가 정한다.
@@ -308,6 +309,35 @@ void main() {
     expect(server.startRequests.single.data['skin_retouch_enabled'], isFalse);
     expect(server.syncRequests.single.data['skin_retouch_enabled'], isFalse);
     expect(server.syncRequests.single.data['reshape_enabled'], isFalse);
+  });
+
+  test('직접 고른 보정 스타일이 작업 API·동기 폴백 본문의 style_profile에 실린다',
+      () async {
+    final manual = buildRequestStyleProfile(null, 'golden_hour');
+    server.starts.add(_started('job1', 'done'));
+    server.polls.add(_job('done', 'done', 10, result: _result()));
+    await datasource().analyzeAndTransform(
+      imageBase64: 'B64',
+      styleProfile: manual!,
+    );
+    expect(server.startRequests.single.data['style_profile'],
+        {'trendCategory': 'golden_hour', 'styleSource': 'manual'});
+
+    // 구버전 서버(작업 API 404) → 동기 엔드포인트에도 그대로
+    server = _FakeServer();
+    server.starts.add((_) => _Reply.status(404, {'detail': 'Not Found'}));
+    server.sync = (_) => _Reply.status(200, _result('SYNC'));
+    final withProfile = buildRequestStyleProfile(
+        {'trendCategory': 'warm_film', 'tone': 'warm'}, 'cinematic_moody');
+    await datasource().analyzeAndTransform(
+      imageBase64: 'B64',
+      styleProfile: withProfile!,
+    );
+    expect(server.syncRequests.single.data['style_profile'], {
+      'trendCategory': 'cinematic_moody',
+      'tone': 'warm',
+      'styleSource': 'manual',
+    });
   });
 
   test('폴링 중 job_not_found(서버 재시작)면 작업을 한 번 다시 시작한다', () async {

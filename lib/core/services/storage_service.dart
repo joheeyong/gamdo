@@ -25,6 +25,8 @@ class StorageService {
   static const String _instagramUsernameKey = 'instagram_username';
   static const String _reshapeEnabledKey = 'reshape_enabled';
   static const String _skinRetouchEnabledKey = 'skin_retouch_enabled';
+  static const String _editStyleKey = 'edit_style';
+  static const String _editStylePromptedKey = 'edit_style_prompted';
 
   // secure storage 키
   static const String _secureInstagramTokenKey = 'instagram_token';
@@ -113,6 +115,30 @@ class StorageService {
   Future<void> setSkinRetouchEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_skinRetouchEnabledKey, value);
+  }
+
+  // ── 보정 스타일 ──
+
+  /// 'auto'(내 피드 기준) 또는 trendCategory id. 저장된 값이 없으면 null.
+  Future<String?> getEditStyle() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_editStyleKey);
+  }
+
+  Future<void> setEditStyle(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_editStyleKey, value);
+  }
+
+  /// '보정 스타일을 골라 주세요' 안내를 이미 띄웠는지 (한 번만 띄운다).
+  Future<bool> isEditStylePrompted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_editStylePromptedKey) ?? false;
+  }
+
+  Future<void> setEditStylePrompted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_editStylePromptedKey, true);
   }
 
   // ── Instagram ──

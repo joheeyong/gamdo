@@ -8,6 +8,10 @@ abstract class SettingsRepository {
   Future<void> setReshapeEnabled(bool value);
   Future<bool> isSkinRetouchEnabled();
   Future<void> setSkinRetouchEnabled(bool value);
+  Future<String?> getEditStyle();
+  Future<void> setEditStyle(String value);
+  Future<bool> isEditStylePrompted();
+  Future<void> setEditStylePrompted();
   Future<bool> isDarkMode();
   Future<void> setDarkMode(bool value);
 }

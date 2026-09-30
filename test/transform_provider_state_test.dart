@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gamdo/core/providers/style_profile_provider.dart';
 import 'package:gamdo/core/services/image_service.dart';
 import 'package:gamdo/features/analysis/di/analysis_providers.dart';
 import 'package:gamdo/features/analysis/domain/entities/analysis_job_progress.dart';
@@ -37,6 +38,9 @@ class _FakeAnalysisRepository implements AnalysisRepository {
   /// 마지막 analyzeAndTransformRecord 호출이 받은 피부 보정 설정.
   bool? lastSkinRetouchEnabled;
 
+  /// 마지막 analyzeAndTransformRecord 호출이 받은 style_profile.
+  Map<String, dynamic>? lastStyleProfile;
+
   /// 마지막 analyzeAndTransformRecord 호출이 받은 진행 콜백.
   void Function(AnalysisJobProgress progress)? lastOnProgress;
 
@@ -64,6 +68,7 @@ class _FakeAnalysisRepository implements AnalysisRepository {
   }) async {
     lastOnProgress = onProgress;
     lastSkinRetouchEnabled = skinRetouchEnabled;
+    lastStyleProfile = styleProfile;
     final r = await next(imageFile, cancelToken);
     return (
       recordId: recordId ?? 1,
@@ -226,6 +231,51 @@ void main() {
 
     await notifier().applyManual(File('/picked/a.jpg'), state().params);
     expect(transformRepo.lastParams!.skinSmoothing, 0.4);
+  });
+
+  test('보정 스타일을 직접 고르면 분석·기록 복원 폴백 모두 trendCategory를 바꿔 보낸다',
+      () async {
+    SharedPreferences.setMockInitialValues({'edit_style': 'flash_digicam'});
+    final stored = <String, dynamic>{'trendCategory': 'warm_film', 'tone': 'warm'};
+    container.read(userStyleProfileProvider.notifier).state = stored;
+    analysisRepo.next = (f, t) async => _result('/saved/a.jpg');
+
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    expect(analysisRepo.lastStyleProfile, {
+      'trendCategory': 'flash_digicam',
+      'tone': 'warm',
+      'styleSource': 'manual',
+    });
+    expect(state().appliedStyleName, '플래시·디카');
+    // 저장된 프로필은 그대로
+    expect(container.read(userStyleProfileProvider),
+        {'trendCategory': 'warm_film', 'tone': 'warm'});
+
+    // 재현 정보 없는 기록 → 분석으로 폴백해도 같은 프로필
+    analysisRepo.lastStyleProfile = null;
+    await notifier().openRecord(7, File('/picked/a.jpg'));
+    expect(analysisRepo.lastStyleProfile?['trendCategory'], 'flash_digicam');
+    expect(analysisRepo.lastStyleProfile?['styleSource'], 'manual');
+  });
+
+  test('프로필이 없고 스타일을 골랐으면 trendCategory·styleSource만 보낸다', () async {
+    SharedPreferences.setMockInitialValues({'edit_style': 'bw_grain'});
+    analysisRepo.next = (f, t) async => _result('/saved/a.jpg');
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    expect(analysisRepo.lastStyleProfile,
+        {'trendCategory': 'bw_grain', 'styleSource': 'manual'});
+  });
+
+  test('자동(기본)이면 프로필을 그대로(없으면 null) 보낸다', () async {
+    analysisRepo.next = (f, t) async => _result('/saved/a.jpg');
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    expect(analysisRepo.lastStyleProfile, isNull);
+    expect(state().appliedStyleName, isNull);
+
+    final stored = <String, dynamic>{'trendCategory': 'warm_film'};
+    container.read(userStyleProfileProvider.notifier).state = stored;
+    await notifier().analyzeAndTransform(File('/picked/b.jpg'));
+    expect(analysisRepo.lastStyleProfile, same(stored));
   });
 
   test('결과가 어떤 사진의 것인지 원본·저장 경로로 판별한다', () async {

@@ -11,7 +11,6 @@ import 'package:path/path.dart' as p;
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/providers/auth_provider.dart';
-import '../../../../core/providers/style_profile_provider.dart';
 import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../di/analysis_providers.dart';
 
@@ -113,7 +112,6 @@ class BatchTransformNotifier extends Notifier<BatchTransformState> {
     );
 
     final repo = ref.read(analysisRepositoryDIProvider);
-    final styleProfile = ref.read(userStyleProfileProvider);
 
     String userId = '';
     try {
@@ -132,6 +130,8 @@ class BatchTransformNotifier extends Notifier<BatchTransformState> {
     try {
       reshapeEnabled = await ref.read(reshapeEnabledSettingProvider.future);
     } catch (_) {}
+    // 설정의 '보정 스타일'을 반영한 프로필 — 단건 분석과 같은 함수로 만든다.
+    final styleProfile = await resolveRequestStyleProfile(ref);
     if (isStale()) return;
 
     final results = <BatchItemResult>[];

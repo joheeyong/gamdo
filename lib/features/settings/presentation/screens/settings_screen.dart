@@ -13,6 +13,7 @@ import '../../../analysis/di/analysis_providers.dart';
 import '../../../analysis/presentation/analysis_provider.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../providers/settings_provider.dart';
+import '../widgets/edit_style_picker.dart';
 
 /// 전체 분석 기록 — 프로필 헤더의 통계에 쓰인다.
 final _allAnalysesProvider = StreamProvider<List<AnalysisRecord>>((ref) {
@@ -33,6 +34,8 @@ class SettingsScreen extends ConsumerWidget {
     final isReshapeEnabled = reshapeAsync.value ?? false;
     final skinRetouchAsync = ref.watch(skinRetouchEnabledSettingProvider);
     final isSkinRetouchEnabled = skinRetouchAsync.value ?? true;
+    final editStyle =
+        ref.watch(editStyleSettingProvider).value ?? kEditStyleAuto;
     final styleProfile = ref.watch(userStyleProfileProvider);
     final auth = ref.watch(instagramAuthProvider);
 
@@ -71,6 +74,39 @@ class SettingsScreen extends ConsumerWidget {
                 );
               },
             ),
+          ),
+          const InstaHairline(indent: 16),
+          InstaSettingRow(
+            icon: Icons.palette_outlined,
+            title: '보정 스타일',
+            subtitle: editStyle == kEditStyleAuto
+                ? (styleProfile == null
+                    ? '피드 분석 전 — 기본 보정으로 적용돼요'
+                    : '인스타그램 피드를 분석한 내 스타일')
+                : editStyleById(editStyle)?.description,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  editStyle == kEditStyleAuto ? '자동' : editStyleName(editStyle),
+                  style: TextStyle(fontSize: 14, color: context.instaSecondary),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right, color: context.instaSecondary),
+              ],
+            ),
+            onTap: () async {
+              final picked =
+                  await showEditStylePicker(context, current: editStyle);
+              if (picked == null || picked == editStyle) return;
+              await ref.read(editStyleSettingProvider.notifier).select(picked);
+              if (context.mounted) {
+                showInstaToast(
+                  context,
+                  '보정 스타일: ${editStyleName(picked)} — 다음 분석부터 적용돼요',
+                );
+              }
+            },
           ),
           const InstaHairline(indent: 16),
           InstaSettingRow(
@@ -523,15 +559,7 @@ class _ProfileContent extends StatelessWidget {
         _ => level,
       };
 
-  String _trendLabel(String trend) => switch (trend) {
-        'warm_film' => '웜 필름',
-        'korean_gamsung' => '한국 감성',
-        'cinematic_moody' => '시네마틱',
-        'bright_airy' => '밝은 감성',
-        'golden_hour' => '골든아워',
-        'clean_minimal' => '클린 미니멀',
-        _ => trend,
-      };
+  String _trendLabel(String trend) => editStyleById(trend)?.name ?? trend;
 
   String _filterLabel(String filter) => switch (filter) {
         'auto' => '자동',
@@ -619,13 +647,8 @@ class _StyleProfileEditScreenState extends State<_StyleProfileEditScreen> {
     '파스텔', '다크', '필름', '감성', '시네마틱',
   ];
 
-  static const _trendCategories = {
-    'warm_film': '웜 필름',
-    'korean_gamsung': '한국 감성',
-    'cinematic_moody': '시네마틱',
-    'bright_airy': '밝은 감성',
-    'golden_hour': '골든아워',
-    'clean_minimal': '클린 미니멀',
+  static final _trendCategories = {
+    for (final style in kEditStyles) style.id: style.name,
     'custom': '기타',
   };
 

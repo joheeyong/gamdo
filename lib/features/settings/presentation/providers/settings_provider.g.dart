@@ -226,3 +226,61 @@ abstract class _$SkinRetouchEnabledSetting extends $AsyncNotifier<bool> {
     element.handleCreate(ref, build);
   }
 }
+
+/// 설정의 '보정 스타일' — 'auto'(내 피드 기준) 또는 trendCategory id.
+///
+/// keepAlive — 분석 경로가 `.future`로 읽는다 (피부 보정 설정과 같은 이유).
+
+@ProviderFor(EditStyleSetting)
+final editStyleSettingProvider = EditStyleSettingProvider._();
+
+/// 설정의 '보정 스타일' — 'auto'(내 피드 기준) 또는 trendCategory id.
+///
+/// keepAlive — 분석 경로가 `.future`로 읽는다 (피부 보정 설정과 같은 이유).
+final class EditStyleSettingProvider
+    extends $AsyncNotifierProvider<EditStyleSetting, String> {
+  /// 설정의 '보정 스타일' — 'auto'(내 피드 기준) 또는 trendCategory id.
+  ///
+  /// keepAlive — 분석 경로가 `.future`로 읽는다 (피부 보정 설정과 같은 이유).
+  EditStyleSettingProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'editStyleSettingProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$editStyleSettingHash();
+
+  @$internal
+  @override
+  EditStyleSetting create() => EditStyleSetting();
+}
+
+String _$editStyleSettingHash() => r'96a73269919d5dccb62fb878894d7a9ef390af9b';
+
+/// 설정의 '보정 스타일' — 'auto'(내 피드 기준) 또는 trendCategory id.
+///
+/// keepAlive — 분석 경로가 `.future`로 읽는다 (피부 보정 설정과 같은 이유).
+
+abstract class _$EditStyleSetting extends $AsyncNotifier<String> {
+  FutureOr<String> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<String>, String>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<String>, String>,
+              AsyncValue<String>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
