@@ -357,6 +357,19 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
                         onSave: _onSave,
                       ),
 
+                    // ── 2-1. 크롭 제안 (서버는 구도를 자동으로 바꾸지 않는다) ──
+                    if (transformState.transformedImageBytes != null &&
+                        transformState.hasCropSuggestion)
+                      _CropSuggestionRow(
+                        applied: transformState.cropSuggestionApplied,
+                        busy: transformState.status ==
+                                TransformStatus.applyingManual ||
+                            transformState.status == TransformStatus.saving,
+                        onToggle: () => ref
+                            .read(transformProvider.notifier)
+                            .toggleSuggestedCrop(_imageFile),
+                      ),
+
                     // ── 3. 적용된 변형 요약 ──
                     _AppliedTransformsSummary(
                       params: transformState.params,
@@ -1072,6 +1085,51 @@ class _ApplyingSpinner extends StatelessWidget {
 ///
 /// 인스타그램이 있으면 스토리·피드로 직행하는 버튼 두 개를, 없으면
 /// 갤러리 저장 버튼 하나를 보여 준다. 누를 수 없는 버튼은 내보이지 않는다.
+/// AI가 제안한 구도로 자르기 / 원래 구도로 되돌리기.
+///
+/// 크롭은 사용자가 잡은 구도를 바꾸는 편집이라 자동으로 적용하지 않고
+/// 여기서 고르게 한다. 켠 상태는 기록에도 남아 다시 열거나 저장할 때 같다.
+class _CropSuggestionRow extends StatelessWidget {
+  final bool applied;
+  final bool busy;
+  final VoidCallback onToggle;
+
+  const _CropSuggestionRow({
+    required this.applied,
+    required this.busy,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: Row(
+        children: [
+          Icon(Icons.crop_outlined, size: 16, color: context.instaSecondary),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              applied
+                  ? '\uCD94\uCC9C \uAD6C\uB3C4\uB85C \uC790\uB978 \uC0AC\uC9C4\uC774\uC5D0\uC694'
+                  : '\uCD94\uCC9C \uAD6C\uB3C4\uAC00 \uC788\uC5B4\uC694',
+              style: TextStyle(fontSize: 13, color: context.instaSecondary),
+            ),
+          ),
+          InstaPill(
+            label: applied
+                ? '\uC6D0\uB798 \uAD6C\uB3C4\uB85C'
+                : '\uCD94\uCC9C \uAD6C\uB3C4\uB85C \uC790\uB974\uAE30',
+            selected: applied,
+            dense: true,
+            onTap: busy ? () {} : onToggle,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ShareRow extends StatelessWidget {
   final bool busy;
   final bool instagramInstalled;

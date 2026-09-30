@@ -363,6 +363,68 @@ void main() {
       expect(exportReq, equals(restoreReq));
     });
 
+    test('추천 구도로 자르기를 켜면 미리보기·저장·기록 복원 요청에 모두 실리고, 끄면 되돌린다',
+        () async {
+      server.analyzeResponse = (n) {
+        final r = _analyzeResponse(n);
+        (r['analysis'] as Map)['autoEdits'] = {
+          'allow_vertical_crop': true,
+          'suggested_crop': {'x': 0.1, 'y': 0.0, 'width': 0.7, 'height': 1.0},
+          'suggested_ratio': '4:5',
+        };
+        return r;
+      };
+      final seeded = await repo.analyzeAndTransformRecord(imageFile: source);
+      final image = File(seeded.imagePath);
+      await notifier().openRecord(seeded.recordId, image);
+      expect(state().hasCropSuggestion, isTrue);
+      expect(state().cropSuggestionApplied, isFalse);
+      // 제안은 자동으로 적용되지 않는다 — 복원 요청에 플래그가 없다
+      expect((server.applyRequests.last.data as Map)['auto_edits'],
+          isNot(contains('apply_suggested_crop')));
+
+      await notifier().toggleSuggestedCrop(image);
+      expect(state().cropSuggestionApplied, isTrue);
+      final previewReq = server.applyRequests.last.data as Map;
+      expect(previewReq['auto_edits']['apply_suggested_crop'], true);
+      expect(previewReq['auto_edits']['suggested_crop'],
+          {'x': 0.1, 'y': 0.0, 'width': 0.7, 'height': 1.0});
+
+      // 기록에도 남는다
+      var stored = StoredTransform.tryDecode(
+          (await db.getAnalysisById(seeded.recordId))!.transformJson)!;
+      expect(stored.autoEdits!['apply_suggested_crop'], true);
+      expect(stored.paramsComment, '따뜻하게 1', reason: '다른 값은 그대로');
+
+      // 다시 열어도 같은 구도, 저장·공유 요청과도 같다
+      server.requests.clear();
+      await notifier().openRecord(seeded.recordId, image);
+      expect(state().cropSuggestionApplied, isTrue);
+      final restoreReq = server.applyRequests.single.data as Map;
+      expect(restoreReq['auto_edits']['apply_suggested_crop'], true);
+      await notifier().renderForExport(image);
+      expect(server.applyRequests.last.data as Map, equals(restoreReq));
+
+      // 되돌리기
+      await notifier().toggleSuggestedCrop(image);
+      expect(state().cropSuggestionApplied, isFalse);
+      expect((server.applyRequests.last.data as Map)['auto_edits']
+          ['apply_suggested_crop'], false);
+      stored = StoredTransform.tryDecode(
+          (await db.getAnalysisById(seeded.recordId))!.transformJson)!;
+      expect(stored.autoEdits!['apply_suggested_crop'], false);
+    });
+
+    test('제안이 없으면 추천 구도 토글은 아무것도 하지 않는다', () async {
+      final seeded = await repo.analyzeAndTransformRecord(imageFile: source);
+      await notifier().openRecord(seeded.recordId, File(seeded.imagePath));
+      expect(state().hasCropSuggestion, isFalse);
+      server.requests.clear();
+      await notifier().toggleSuggestedCrop(File(seeded.imagePath));
+      expect(server.requests, isEmpty);
+      expect(state().cropSuggestionApplied, isFalse);
+    });
+
     test('설정에서 체형 보정이 꺼져 있으면 복원 시 체형 값을 0으로 보낸다', () async {
       container.dispose();
       final datasource = GamdoAgentDatasource(server.dio);

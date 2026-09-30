@@ -76,6 +76,11 @@ abstract class AnalysisRepository {
   /// 기록 하나를 읽는다. 없으면 null.
   Future<SavedAnalysis?> loadRecord(int recordId);
 
+  /// 기록의 재현 정보(transformJson) 중 autoEdits만 바꾼다 ('추천 구도로
+  /// 자르기' 등 사용자가 고른 기하 편집). 재현 정보가 없는 기록이면 그대로 둔다.
+  Future<void> updateStoredAutoEdits(
+      int recordId, Map<String, dynamic>? autoEdits);
+
   /// 사용자 대표 사진 base64 목록 조회
   Future<List<String>> fetchReferenceImages(String userId);
 }

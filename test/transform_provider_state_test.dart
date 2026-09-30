@@ -82,6 +82,10 @@ class _FakeAnalysisRepository implements AnalysisRepository {
   Future<SavedAnalysis?> loadRecord(int recordId) async => null;
 
   @override
+  Future<void> updateStoredAutoEdits(
+      int recordId, Map<String, dynamic>? autoEdits) async {}
+
+  @override
   Future<List<String>> fetchReferenceImages(String userId) async => [];
 
   @override

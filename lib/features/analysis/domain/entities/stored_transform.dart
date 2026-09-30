@@ -53,6 +53,17 @@ class StoredTransform {
     );
   }
 
+  /// autoEdits만 바꾼 사본 (사용자가 '추천 구도로 자르기'를 켜고 끌 때).
+  StoredTransform withAutoEdits(Map<String, dynamic>? autoEdits) =>
+      StoredTransform(
+        version: version,
+        params: params,
+        autoEdits: autoEdits,
+        regionParams: regionParams,
+        toneCurvePoints: toneCurvePoints,
+        paramsComment: paramsComment,
+      );
+
   /// 화면 슬라이더·요청에 쓰는 형태.
   TransformParams get transformParams => TransformParams.fromJson(params);
 

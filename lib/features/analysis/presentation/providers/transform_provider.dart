@@ -126,6 +126,17 @@ class TransformState {
     this.appliedStyleName,
   });
 
+  /// 서버가 남긴 크롭 제안(autoEdits.suggested_crop / suggested_ratio)이 있는지.
+  ///
+  /// 서버는 모델의 크롭을 자동으로 적용하지 않고 제안으로만 돌려준다 —
+  /// 사용자가 잡은 구도를 말없이 바꾸지 않기 위해서다.
+  bool get hasCropSuggestion =>
+      autoEdits?['suggested_crop'] is Map ||
+      autoEdits?['suggested_ratio'] is String;
+
+  /// 사용자가 '추천 구도로 자르기'를 켜 두었는지.
+  bool get cropSuggestionApplied => autoEdits?['apply_suggested_crop'] == true;
+
   /// 이 상태(변형 결과)가 [imagePath] 사진의 것인지.
   ///
   /// provider가 전역이라, 다른 사진의 결과가 남아 있는 채로 변형 화면이
@@ -514,6 +525,33 @@ class TransformNotifier extends Notifier<TransformState> {
       );
     }
     return false;
+  }
+
+  /// '추천 구도로 자르기'를 켜고 끈다.
+  ///
+  /// autoEdits에 `apply_suggested_crop`을 싣기만 하면 apply-transform이 제안된
+  /// 크롭·비율을 적용한다. 같은 autoEdits가 미리보기·저장·기록 복원에 모두
+  /// 쓰이므로, 기록의 재현 정보에도 남겨 다시 열었을 때 같은 구도가 나오게 한다.
+  Future<void> toggleSuggestedCrop(File imageFile) async {
+    if (!state.hasCropSuggestion) return;
+    final autoEdits = {
+      ...?state.autoEdits,
+      'apply_suggested_crop': !state.cropSuggestionApplied,
+    };
+    state = state.copyWith(autoEdits: autoEdits);
+
+    final recordId = state.recordId;
+    if (recordId != null) {
+      try {
+        await ref
+            .read(analysisRepositoryDIProvider)
+            .updateStoredAutoEdits(recordId, autoEdits);
+      } catch (e) {
+        // 화면의 결과는 그대로 쓸 수 있다. 기록에만 반영되지 않는다.
+        developer.log('updateStoredAutoEdits failed: $e', name: 'Transform');
+      }
+    }
+    await applyManual(imageFile, state.params);
   }
 
   Future<void> applyManual(File imageFile, TransformParams params) async {

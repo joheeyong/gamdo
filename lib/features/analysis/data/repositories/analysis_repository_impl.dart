@@ -203,6 +203,18 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
     );
   }
 
+  @override
+  Future<void> updateStoredAutoEdits(
+      int recordId, Map<String, dynamic>? autoEdits) async {
+    final stored = await _database.getAnalysisById(recordId);
+    final transform = StoredTransform.tryDecode(stored?.transformJson);
+    if (stored == null || transform == null) return;
+    await _database.updateTransformJson(
+      recordId,
+      transform.withAutoEdits(autoEdits).encode(),
+    );
+  }
+
   /// 변형 결과 base64를 썸네일 파일로 남기고 경로를 돌려준다.
   ///
   /// 실패해도 분석 자체는 성공이므로 null을 돌려 목록이 원본으로 폴백하게 둔다.
