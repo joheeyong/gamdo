@@ -78,7 +78,6 @@ lib/
 │   └── settings/           # 다크모드, 얼굴보정 토글, Instagram 계정 관리
 ├── l10n/                   # 한국어/영어 지역화
 └── firebase_options.dart   # Firebase 설정
-cloudflare-worker/          # Agent 프록시 서버 (별도 README 참조)
 ```
 
 ## 화면 구성
