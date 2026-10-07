@@ -16,6 +16,7 @@ import '../../domain/photo_analysis.dart';
 import '../providers/transform_provider.dart';
 import '../widgets/color_palette_view.dart';
 import '../widgets/color_temperature_gauge.dart';
+import '../widgets/photo_viewer.dart';
 import '../widgets/saturation_chart.dart';
 import '../widgets/tone_report_card.dart';
 
@@ -917,6 +918,21 @@ class _BeforeAfterTabViewState extends State<_BeforeAfterTabView>
     }
   }
 
+  /// 탭하면 전체 화면으로 크게 본다 (확대·비교는 거기서).
+  void _openViewer(int index) {
+    PhotoViewerScreen.open(
+      context,
+      originalImage: widget.originalImage,
+      transformedBytes: widget.transformedBytes,
+      initialIndex: index,
+    );
+  }
+
+  Widget _tappable(int index, Widget child) => GestureDetector(
+        onTap: () => _openViewer(index),
+        child: child,
+      );
+
   @override
   Widget build(BuildContext context) {
     final hasTransformed = widget.transformedBytes != null;
@@ -926,8 +942,12 @@ class _BeforeAfterTabViewState extends State<_BeforeAfterTabView>
       return Stack(
         children: [
           Positioned.fill(
-            child: Image.file(widget.originalImage, fit: BoxFit.contain),
+            child: _tappable(
+              0,
+              Image.file(widget.originalImage, fit: BoxFit.contain),
+            ),
           ),
+          _ExpandButton(onTap: () => _openViewer(0)),
           if (widget.isApplying) const _ApplyingSpinner(),
         ],
       );
@@ -943,19 +963,27 @@ class _BeforeAfterTabViewState extends State<_BeforeAfterTabView>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    Image.file(
-                      widget.originalImage,
-                      fit: BoxFit.contain,
-                      gaplessPlayback: true,
+                    _tappable(
+                      0,
+                      Image.file(
+                        widget.originalImage,
+                        fit: BoxFit.contain,
+                        gaplessPlayback: true,
+                      ),
                     ),
-                    Image.memory(
-                      widget.transformedBytes!,
-                      fit: BoxFit.contain,
-                      gaplessPlayback: true,
+                    _tappable(
+                      1,
+                      Image.memory(
+                        widget.transformedBytes!,
+                        fit: BoxFit.contain,
+                        gaplessPlayback: true,
+                      ),
                     ),
                   ],
                 ),
               ),
+              _ExpandButton(
+                  onTap: () => _openViewer(_tabController.index)),
               // 첫 진입 힌트 오버레이
               if (_hintActive)
                 Positioned.fill(
@@ -1009,6 +1037,32 @@ class _BeforeAfterTabViewState extends State<_BeforeAfterTabView>
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 이미지 오른쪽 아래의 '크게 보기' 버튼 — 탭해서 열 수 있다는 걸 알려 준다.
+class _ExpandButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ExpandButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      right: 10,
+      bottom: 10,
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.45),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: const Padding(
+            padding: EdgeInsets.all(8),
+            child: Icon(Icons.open_in_full, size: 18, color: Colors.white),
+          ),
+        ),
+      ),
     );
   }
 }
