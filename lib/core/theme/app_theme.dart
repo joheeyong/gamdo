@@ -30,13 +30,14 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
-        // 인스타그램 상단바: 그림자 대신 0.5px 헤어라인
+        // 상단바: 그림자 대신 종이 결의 헤어라인
         shape: Border(
           bottom: BorderSide(color: AppColors.dividerLight, width: 0.5),
         ),
         titleTextStyle: TextStyle(
           inherit: false,
-          fontFamily: AppTypography.fontFamily,
+          fontFamily: AppTypography.serifFamily,
+          fontFamilyFallback: AppTypography.serifFallback,
           fontSize: 20,
           fontWeight: FontWeight.w700,
           letterSpacing: -0.3,
@@ -53,14 +54,15 @@ class AppTheme {
           side: const BorderSide(color: AppColors.dividerLight, width: 0.5),
         ),
       ),
+      // 주 버튼: 먹색 채움 위 종이색 글자 (필름 노트 시안의 '새 사진 보정하기')
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.actionBlue,
-          foregroundColor: Colors.white,
+          backgroundColor: AppColors.ink,
+          foregroundColor: AppColors.surfaceLight,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
           ),
           textStyle: const TextStyle(
             inherit: false,
@@ -76,7 +78,7 @@ class AppTheme {
           side: const BorderSide(color: AppColors.dividerLight),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
           ),
           textStyle: const TextStyle(
             inherit: false,
@@ -89,7 +91,7 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surfaceLight,
         indicatorColor: Colors.transparent,
-        // 인스타그램 하단 탭은 아이콘만 노출한다
+        // 하단 탭은 아이콘만 노출한다
         labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
         overlayColor: WidgetStatePropertyAll(Colors.transparent),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
@@ -117,9 +119,9 @@ class AppTheme {
           return const IconThemeData(color: AppColors.textSecondaryLight, size: 28);
         }),
       ),
-      // 인스타그램식 토스트: 어두운 알약, 그림자 없음
+      // 토스트: 따뜻한 먹색 알약, 그림자 없음
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: const Color(0xFF262626),
+        backgroundColor: AppColors.floatingDark,
         contentTextStyle: const TextStyle(
           fontFamily: AppTypography.fontFamily,
           fontSize: 14,
@@ -183,9 +185,24 @@ class AppTheme {
           color: AppColors.surfaceLight,
         ),
       ),
+      // 스위치: 켜면 앰버, 끄면 옅은 종이 트랙 위 회갈색 손잡이
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? Colors.white
+                : AppColors.textSecondaryLight),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? AppColors.primary
+                : AppColors.secondaryFillLight),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? Colors.transparent
+                : AppColors.dividerLight),
+      ),
       sliderTheme: SliderThemeData(
         trackHeight: 2,
-        activeTrackColor: AppColors.textPrimaryLight,
+        activeTrackColor: AppColors.primary,
         inactiveTrackColor: AppColors.dividerLight,
         thumbColor: AppColors.surfaceLight,
         overlayColor: AppColors.primary.withValues(alpha: 0.1),
@@ -194,7 +211,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.actionBlue,
+          foregroundColor: AppColors.action,
           textStyle: const TextStyle(
               fontFamily: AppTypography.fontFamily,
             fontSize: 15,
@@ -206,7 +223,7 @@ class AppTheme {
         color: AppColors.dividerLight,
         thickness: 0.5,
       ),
-      // 인스타그램 입력 필드: 옅게 채운 사각 박스 + 1px 테두리, 라운드 6
+      // 입력 필드: 옅게 채운 종이 박스 + 1px 테두리, 라운드 8
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.backgroundLight,
@@ -236,30 +253,30 @@ class AppTheme {
           color: AppColors.error,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.dividerLight),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.dividerLight),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.textSecondaryLight),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primary),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.error),
         ),
       ),
       textSelectionTheme: TextSelectionThemeData(
-        cursorColor: AppColors.textPrimaryLight,
-        selectionColor: AppColors.actionBlue.withValues(alpha: 0.25),
-        selectionHandleColor: AppColors.actionBlue,
+        cursorColor: AppColors.primary,
+        selectionColor: AppColors.action.withValues(alpha: 0.25),
+        selectionHandleColor: AppColors.action,
       ),
     );
   }
@@ -288,13 +305,14 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         systemOverlayStyle: SystemUiOverlayStyle.light,
-        // 인스타그램 상단바: 그림자 대신 0.5px 헤어라인
+        // 상단바: 그림자 대신 종이 결의 헤어라인
         shape: Border(
           bottom: BorderSide(color: AppColors.dividerDark, width: 0.5),
         ),
         titleTextStyle: TextStyle(
           inherit: false,
-          fontFamily: AppTypography.fontFamily,
+          fontFamily: AppTypography.serifFamily,
+          fontFamilyFallback: AppTypography.serifFallback,
           fontSize: 20,
           fontWeight: FontWeight.w700,
           letterSpacing: -0.3,
@@ -311,14 +329,15 @@ class AppTheme {
           side: const BorderSide(color: AppColors.dividerDark, width: 0.5),
         ),
       ),
+      // 주 버튼: 다크에서는 종이색 채움 위 먹색 글자
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.actionBlue,
-          foregroundColor: Colors.white,
+          backgroundColor: AppColors.textPrimaryDark,
+          foregroundColor: AppColors.ink,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
           ),
           textStyle: const TextStyle(
             inherit: false,
@@ -334,14 +353,14 @@ class AppTheme {
           side: const BorderSide(color: AppColors.dividerDark),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.backgroundDark,
         indicatorColor: Colors.transparent,
-        // 인스타그램 하단 탭은 아이콘만 노출한다
+        // 하단 탭은 아이콘만 노출한다
         labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
         overlayColor: WidgetStatePropertyAll(Colors.transparent),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
@@ -369,9 +388,9 @@ class AppTheme {
           return const IconThemeData(color: AppColors.textSecondaryDark, size: 28);
         }),
       ),
-      // 인스타그램식 토스트: 어두운 알약, 그림자 없음
+      // 토스트: 따뜻한 먹색 알약, 그림자 없음
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: const Color(0xFF262626),
+        backgroundColor: AppColors.floatingDark,
         contentTextStyle: const TextStyle(
           fontFamily: AppTypography.fontFamily,
           fontSize: 14,
@@ -435,9 +454,24 @@ class AppTheme {
           color: AppColors.surfaceDark,
         ),
       ),
+      // 스위치: 켜면 앰버, 끄면 어두운 트랙 위 회갈색 손잡이
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? Colors.white
+                : AppColors.textSecondaryDark),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? AppColors.primary
+                : AppColors.secondaryFillDark),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? Colors.transparent
+                : AppColors.dividerDark),
+      ),
       sliderTheme: SliderThemeData(
         trackHeight: 2,
-        activeTrackColor: AppColors.textPrimaryDark,
+        activeTrackColor: AppColors.primary,
         inactiveTrackColor: AppColors.dividerDark,
         thumbColor: AppColors.textPrimaryDark,
         overlayColor: AppColors.primary.withValues(alpha: 0.1),
@@ -446,7 +480,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.actionBlue,
+          foregroundColor: AppColors.action,
           textStyle: const TextStyle(
               fontFamily: AppTypography.fontFamily,
             fontSize: 15,
@@ -458,7 +492,7 @@ class AppTheme {
         color: AppColors.dividerDark,
         thickness: 0.5,
       ),
-      // 인스타그램 입력 필드: 옅게 채운 사각 박스 + 1px 테두리, 라운드 6
+      // 입력 필드: 옅게 채운 종이 박스 + 1px 테두리, 라운드 8
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceDark,
@@ -488,30 +522,30 @@ class AppTheme {
           color: AppColors.error,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.dividerDark),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.dividerDark),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: AppColors.textSecondaryDark),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primary),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.error),
         ),
       ),
       textSelectionTheme: TextSelectionThemeData(
-        cursorColor: AppColors.textPrimaryDark,
-        selectionColor: AppColors.actionBlue.withValues(alpha: 0.25),
-        selectionHandleColor: AppColors.actionBlue,
+        cursorColor: AppColors.primary,
+        selectionColor: AppColors.action.withValues(alpha: 0.25),
+        selectionHandleColor: AppColors.action,
       ),
     );
   }

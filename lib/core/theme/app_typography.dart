@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 
-/// 인스타그램 기준으로 맞춘 타이포 스케일.
+/// 감도 '필름 노트' 타이포 스케일.
 ///
-/// 인스타그램은 본문을 14px로 고정하고 줄 간격을 1.35~1.45로 좁게 가져간다.
-/// 큰 글자일수록 자간을 음수로 조여 제목이 뭉쳐 보이게 하고,
-/// 강조는 크기가 아니라 굵기(w600/w700)로 준다.
+/// 제목·워드마크는 명조(Noto Serif KR)로 인화지 노트 같은 결을 내고,
+/// 본문·버튼·수치는 고딕(Pretendard)으로 읽기 쉽게 둔다.
+/// 명조는 앱 용량을 줄이려 KS X 1001 한글 2,350자만 담은 서브셋이다.
+/// 그 밖의 글자는 [serifFallback]의 고딕으로 그려진다.
 class AppTypography {
   AppTypography._();
 
   static const String fontFamily = 'Pretendard';
+
+  /// 제목용 명조. 굵기는 w600·w700만 들어 있다.
+  static const String serifFamily = 'NotoSerifKR';
+  static const List<String> serifFallback = [fontFamily];
 
   // ── 의미 기반 스타일 ──
   //
@@ -16,9 +21,10 @@ class AppTypography {
 
   /// 앱 워드마크('감도'). 스플래시·홈·설정에서 같은 모양을 쓴다.
   static const TextStyle wordmark = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: serifFamily,
+    fontFamilyFallback: serifFallback,
     fontWeight: FontWeight.w700,
-    letterSpacing: 2,
+    letterSpacing: -0.5,
     height: 1.2,
   );
 
@@ -56,11 +62,12 @@ class AppTypography {
 
   /// 화면 안 섹션 제목.
   static const TextStyle sectionTitle = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 16,
-    fontWeight: FontWeight.w700,
+    fontFamily: serifFamily,
+    fontFamilyFallback: serifFallback,
+    fontSize: 17,
+    fontWeight: FontWeight.w600,
     letterSpacing: -0.2,
-    height: 1.35,
+    height: 1.4,
   );
 
   /// 앱바 제목(모달·편집 플로우의 가운데 정렬 제목).
@@ -99,56 +106,62 @@ class AppTypography {
 
   static TextTheme textTheme(Color textColor) {
     return TextTheme(
-      // 히어로 타이틀 — 자간을 조여 인스타그램 헤드라인처럼 뭉치게 한다
+      // 히어로·헤드라인 — 명조. 줄 간격을 넉넉히 둬 노트에 쓴 제목처럼 보이게 한다
       displayLarge: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: serifFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 30,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.6,
         color: textColor,
-        height: 1.25,
+        height: 1.4,
       ),
       displayMedium: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: serifFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 26,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
         color: textColor,
-        height: 1.25,
+        height: 1.4,
       ),
       displaySmall: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: serifFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 22,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.4,
         color: textColor,
-        height: 1.3,
+        height: 1.4,
       ),
       headlineLarge: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: serifFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 20,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         letterSpacing: -0.3,
         color: textColor,
-        height: 1.3,
+        height: 1.4,
       ),
       headlineMedium: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: serifFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 18,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         letterSpacing: -0.3,
         color: textColor,
-        height: 1.35,
+        height: 1.4,
       ),
       headlineSmall: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: serifFamily,
+        fontFamilyFallback: serifFallback,
         fontSize: 16,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         letterSpacing: -0.2,
         color: textColor,
-        height: 1.35,
+        height: 1.4,
       ),
-      // 제목 — 인스타그램은 크기 대신 굵기로 위계를 만든다
+      // 제목 — 고딕. 크기 대신 굵기로 위계를 만든다
       titleLarge: TextStyle(
         fontFamily: fontFamily,
         fontSize: 16,
@@ -170,7 +183,7 @@ class AppTypography {
         color: textColor,
         height: 1.4,
       ),
-      // 본문 — 14px, 줄 간격 1.4가 인스타그램 캡션의 기본값
+      // 본문 — 14px, 줄 간격 1.4
       bodyLarge: TextStyle(
         fontFamily: fontFamily,
         fontSize: 15,

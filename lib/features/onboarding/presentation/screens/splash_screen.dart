@@ -62,15 +62,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      // 네이티브 실행 화면과 같은 종이/먹색 바탕 — 이어질 때 색이 튀지 않는다
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: GradientText(
+          child: Text(
             '\uAC10\uB3C4',
             style: AppTypography.wordmark.copyWith(
               fontSize: 44,
-              letterSpacing: 6,
+              letterSpacing: 2,
+              color: context.instaPrimaryText,
             ),
           ),
         ),

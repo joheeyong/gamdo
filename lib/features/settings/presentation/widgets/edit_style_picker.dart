@@ -208,7 +208,7 @@ class EditStyleSwatch extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = style;
     final Gradient gradient = s == null
-        ? AppColors.instagramGradient
+        ? AppColors.brandGradient
         : LinearGradient(
             colors: [for (final c in s.swatch) Color(c)],
             begin: Alignment.topLeft,

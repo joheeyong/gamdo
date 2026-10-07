@@ -102,7 +102,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           height: 120,
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: AppColors.storyGradient,
+                            gradient: AppColors.ringGradient,
                           ),
                           padding: const EdgeInsets.all(3),
                           child: Container(
@@ -159,7 +159,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     height: 48,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        gradient: AppColors.instagramGradient,
+                        gradient: AppColors.brandGradient,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: ElevatedButton(

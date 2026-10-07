@@ -3,19 +3,19 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 
-/// Instagram 계열 공통 UI 요소 모음.
+/// 감도 공통 UI 요소 모음 ('필름 노트' 스타일).
 ///
 /// Material 기본 위젯(SnackBar / AlertDialog / Chip / ListTile)은
-/// 그림자·물결·체크마크가 많아 인스타그램 톤과 어긋난다.
-/// 이 파일의 요소들은 모두 그림자 없이 0.5px 헤어라인과
-/// 흑/백 대비만으로 구성해 인스타그램 UI와 결을 맞춘다.
+/// 그림자·물결·체크마크가 많아 종이 노트 같은 화면 결과 어긋난다.
+/// 이 파일의 요소들은 그림자 없이 헤어라인과 종이/먹색 대비로 구성한다.
+/// (클래스 이름의 Insta 접두어는 예전 이름이 남은 것이다.)
 
 // ── 색 유틸 ──
 
 extension InstaThemeX on BuildContext {
   bool get _isDark => Theme.of(this).brightness == Brightness.dark;
 
-  /// 보조 텍스트(회색 #8E8E8E) — 인스타그램 secondary label.
+  /// 보조 텍스트(따뜻한 회갈색).
   Color get instaSecondary =>
       _isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
 
@@ -34,7 +34,7 @@ extension InstaThemeX on BuildContext {
 
 // ── 그래디언트 텍스트/아이콘 ──
 
-/// 인스타그램 그래디언트로 마스킹한 텍스트.
+/// 앰버 두 톤으로 마스킹한 텍스트 (워드마크·강조).
 class GradientText extends StatelessWidget {
   final String text;
   final TextStyle? style;
@@ -44,7 +44,7 @@ class GradientText extends StatelessWidget {
     this.text, {
     super.key,
     this.style,
-    this.gradient = AppColors.instagramGradient,
+    this.gradient = AppColors.brandGradient,
   });
 
   @override
@@ -59,7 +59,7 @@ class GradientText extends StatelessWidget {
   }
 }
 
-/// 인스타그램 그래디언트로 마스킹한 아이콘.
+/// 앰버 두 톤으로 마스킹한 아이콘.
 class GradientIcon extends StatelessWidget {
   final IconData icon;
   final double size;
@@ -69,7 +69,7 @@ class GradientIcon extends StatelessWidget {
     this.icon, {
     super.key,
     this.size = 24,
-    this.gradient = AppColors.instagramGradient,
+    this.gradient = AppColors.brandGradient,
   });
 
   @override
@@ -84,7 +84,7 @@ class GradientIcon extends StatelessWidget {
 
 // ── 헤어라인 ──
 
-/// 인스타그램식 0.5px 구분선.
+/// 0.5px 헤어라인 구분선.
 class InstaHairline extends StatelessWidget {
   final double indent;
   final double endIndent;
@@ -132,9 +132,9 @@ class InstaSectionLabel extends StatelessWidget {
 
 // ── 필터 알약(Pill) ──
 
-/// 인스타그램 탐색 탭의 필터 알약.
+/// 필터 알약.
 ///
-/// 선택 시 흑/백 반전으로 채우고, 비선택은 헤어라인 테두리만 남긴다.
+/// 선택 시 먹색으로 채우고, 비선택은 헤어라인 테두리만 남긴다.
 /// Material [FilterChip]의 체크마크·물결 효과를 쓰지 않는다.
 class InstaPill extends StatelessWidget {
   final String label;
@@ -186,7 +186,7 @@ class InstaPill extends StatelessWidget {
 
 // ── 설정 행 ──
 
-/// 인스타그램 설정 화면의 한 줄(아이콘 + 제목 + 트레일링).
+/// 설정 화면의 한 줄(아이콘 + 제목 + 트레일링).
 class InstaSettingRow extends StatelessWidget {
   final IconData? icon;
   final String title;
@@ -255,7 +255,7 @@ class InstaSettingRow extends StatelessWidget {
 
 // ── 토스트 ──
 
-/// 인스타그램식 토스트(어두운 알약, 하단 부유).
+/// 토스트(따뜻한 먹색 알약, 하단 부유).
 ///
 /// Material SnackBar의 기본 모양 대신 사용한다.
 void showInstaToast(
@@ -292,7 +292,7 @@ void showInstaToast(
           ],
         ),
         backgroundColor:
-            isError ? AppColors.error : const Color(0xFF262626),
+            isError ? AppColors.error : AppColors.floatingDark,
         behavior: SnackBarBehavior.floating,
         elevation: 0,
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -307,10 +307,10 @@ void showInstaToast(
 
 // ── 확인 다이얼로그 ──
 
-/// 인스타그램식 확인 다이얼로그.
+/// 확인 다이얼로그.
 ///
 /// 가운데 정렬 제목/본문 + 헤어라인으로 나뉜 버튼 두 개.
-/// 파괴적 동작은 빨간 볼드로 표시한다.
+/// 파괴적 동작은 벽돌색 볼드로 표시한다.
 Future<bool> showInstaConfirm(
   BuildContext context, {
   required String title,
@@ -373,7 +373,7 @@ Future<bool> showInstaConfirm(
                   Expanded(
                     child: _DialogButton(
                       label: confirmLabel,
-                      color: isDestructive ? AppColors.error : AppColors.actionBlue,
+                      color: isDestructive ? AppColors.error : AppColors.action,
                       bold: true,
                       onTap: () => Navigator.pop(ctx, true),
                     ),
@@ -439,7 +439,7 @@ class InstaSheetAction {
   });
 }
 
-/// 인스타그램식 하단 액션 시트(그랩 핸들 + 아이콘 행).
+/// 하단 액션 시트(그랩 핸들 + 아이콘 행).
 Future<void> showInstaSheet(
   BuildContext context, {
   String? title,
@@ -527,7 +527,7 @@ Future<void> showInstaSheet(
 
 // ── 통계 열(프로필 헤더) ──
 
-/// 인스타그램 프로필의 게시물/팔로워 카운터 한 칸.
+/// 프로필 헤더의 통계 한 칸.
 class InstaStat extends StatelessWidget {
   final String value;
   final String label;
@@ -559,7 +559,7 @@ class InstaStat extends StatelessWidget {
 
 // ── 보조 버튼 ──
 
-/// 인스타그램 프로필의 '프로필 편집' 류 회색 버튼.
+/// '프로필 편집' 류 보조 버튼 (옅은 종이색 채움).
 class InstaSecondaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -582,7 +582,7 @@ class InstaSecondaryButton extends StatelessWidget {
     return SizedBox(
       height: 34,
       child: Material(
-        color: isDark ? const Color(0xFF262626) : const Color(0xFFEFEFEF),
+        color: isDark ? AppColors.secondaryFillDark : AppColors.secondaryFillLight,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onPressed,

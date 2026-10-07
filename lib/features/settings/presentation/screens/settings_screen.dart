@@ -146,9 +146,12 @@ class SettingsScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: 28),
             child: Column(
               children: [
-                GradientText(
+                Text(
                   '감도',
-                  style: AppTypography.wordmark.copyWith(fontSize: 20),
+                  style: AppTypography.wordmark.copyWith(
+                    fontSize: 20,
+                    color: context.instaPrimaryText,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -242,7 +245,7 @@ class _ProfileHeader extends ConsumerWidget {
               fontSize: 13,
               height: 1.4,
               color: moodKeywords.isNotEmpty
-                  ? AppColors.actionBlue
+                  ? AppColors.action
                   : context.instaSecondary,
             ),
           ),
@@ -439,7 +442,7 @@ class _ProfileContent extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  gradient: AppColors.instagramGradient,
+                  gradient: AppColors.brandGradient,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -1044,7 +1047,7 @@ class _InstagramRow extends ConsumerWidget {
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                gradient: AppColors.instagramGradient,
+                gradient: AppColors.brandGradient,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: const Text(

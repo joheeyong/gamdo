@@ -1088,7 +1088,7 @@ class _BeforeAfterTabBar extends StatelessWidget {
         child: TabBar(
           controller: controller,
           indicator: BoxDecoration(
-            gradient: AppColors.instagramGradient,
+            gradient: AppColors.brandGradient,
             borderRadius: radius,
           ),
           indicatorSize: TabBarIndicatorSize.tab,

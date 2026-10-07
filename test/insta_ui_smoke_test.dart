@@ -106,7 +106,7 @@ void main() {
       expect(deco.filled, isTrue);
       expect(deco.hintStyle!.fontSize, 14);
       final border = deco.enabledBorder! as OutlineInputBorder;
-      expect(border.borderRadius, BorderRadius.circular(6));
+      expect(border.borderRadius, BorderRadius.circular(8));
 
       await tester.enterText(find.byType(TextField), '차분한');
       await tester.pumpAndSettle();

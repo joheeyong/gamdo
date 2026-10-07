@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/theme/app_colors.dart';
+
 /// Before/After 사진을 전체 화면으로 크게 본다.
 ///
 /// - 두 손가락으로 확대/이동, 두 번 탭하면 그 지점 확대 ↔ 원래 크기
@@ -134,7 +136,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: AppColors.backgroundDark,
         body: Stack(
           children: [
             Positioned.fill(

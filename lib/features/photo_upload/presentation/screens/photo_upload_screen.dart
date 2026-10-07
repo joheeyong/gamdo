@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -169,17 +170,25 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: AppColors.backgroundDark,
         appBar: AppBar(
-          backgroundColor: Colors.black,
+          backgroundColor: AppColors.backgroundDark,
           foregroundColor: Colors.white,
-          // 검정 배경에는 라이트 테마의 밝은 헤어라인 대신 어두운 선을 쓴다
+          // 암실 바탕이라 라이트 테마에서도 상태 표시줄 글자를 밝게
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+          // 암실 먹색 배경에는 라이트 테마의 밝은 헤어라인 대신 어두운 선을 쓴다
           shape: const Border(
             bottom: BorderSide(color: AppColors.dividerDark, width: 0.5),
           ),
           title: const Text(
             '\uC0C8 \uBD84\uC11D',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontFamily: AppTypography.serifFamily,
+              fontFamilyFallback: AppTypography.serifFallback,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimaryDark,
+            ),
           ),
           centerTitle: true,
           leading: isLoading
@@ -199,7 +208,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                   padding: const EdgeInsets.only(right: 16),
                   child: ShaderMask(
                     shaderCallback: (bounds) =>
-                        AppColors.instagramGradient.createShader(bounds),
+                        AppColors.brandGradient.createShader(bounds),
                     child: const Text(
                       '\uBD84\uC11D',
                       style: TextStyle(
@@ -281,7 +290,7 @@ class _UploadView extends StatelessWidget {
                 ),
         ),
         Container(
-          color: Colors.black,
+          color: AppColors.backgroundDark,
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -656,13 +665,13 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
         Expanded(
           flex: 3,
           child: Container(
-            color: Colors.black,
+            color: AppColors.backgroundDark,
             child: Column(
               children: [
                 const SizedBox(height: 12),
                 ShaderMask(
                   shaderCallback: (bounds) =>
-                      AppColors.instagramGradient.createShader(bounds),
+                      AppColors.brandGradient.createShader(bounds),
                   child: const Text(
                     '\uC7A0\uAE50, \uC54C\uACE0 \uACC4\uC168\uB098\uC694?',
                     style: TextStyle(
@@ -830,7 +839,7 @@ class _InterruptedBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black,
+      color: AppColors.backgroundDark,
       padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
       child: Row(
         children: [

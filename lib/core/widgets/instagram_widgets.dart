@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-/// Instagram 스토리 스타일 그래디언트 링 아바타.
+/// 앰버 링 아바타.
 ///
 /// [size]로 전체 크기, [borderWidth]로 링 두께를 조절하고,
 /// [child]에 내부 콘텐츠(아이콘, CircleAvatar 등)를 넣는다.
@@ -25,7 +25,7 @@ class InstagramGradientAvatar extends StatelessWidget {
       height: size,
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        gradient: AppColors.storyGradient,
+        gradient: AppColors.ringGradient,
       ),
       padding: EdgeInsets.all(borderWidth),
       child: Container(
@@ -39,7 +39,7 @@ class InstagramGradientAvatar extends StatelessWidget {
   }
 }
 
-/// Instagram 그래디언트 배경의 ElevatedButton.
+/// 앰버 두 톤 배경의 주 버튼 (흰 글자).
 ///
 /// [isLoading]이 true이면 로딩 스피너를 표시하고 onPressed를 무시한다.
 class InstagramGradientButton extends StatelessWidget {
@@ -65,7 +65,7 @@ class InstagramGradientButton extends StatelessWidget {
       height: height,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: AppColors.instagramGradient,
+          gradient: AppColors.brandGradient,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
         child: ElevatedButton(

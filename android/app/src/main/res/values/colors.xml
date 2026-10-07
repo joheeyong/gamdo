@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 실행 화면 바탕: 필름 노트 종이색 (AppColors.backgroundLight) -->
+    <color name="gamdo_launch_background">#F3EEE4</color>
+</resources>

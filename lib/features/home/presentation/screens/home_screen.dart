@@ -27,9 +27,12 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: GradientText(
+        title: Text(
           '\uAC10\uB3C4',
-          style: AppTypography.wordmark.copyWith(fontSize: 26),
+          style: AppTypography.wordmark.copyWith(
+            fontSize: 26,
+            color: context.instaPrimaryText,
+          ),
         ),
         actions: [
           IconButton(
@@ -167,7 +170,7 @@ class _InstagramProfileCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              gradient: AppColors.instagramGradient,
+              gradient: AppColors.brandGradient,
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Text(
