@@ -13,6 +13,7 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../di/analysis_providers.dart';
+import '../../../../core/services/analytics_service.dart';
 
 enum BatchStatus {
   idle,
@@ -102,6 +103,7 @@ class BatchTransformNotifier extends Notifier<BatchTransformState> {
     final cancelToken = CancelToken();
     _cancelToken = cancelToken;
     bool isStale() => generation != _generation || cancelToken.isCancelled;
+    AnalyticsService.instance.batchStart(count: files.length);
 
     state = BatchTransformState(
       imageFiles: files,
@@ -184,6 +186,12 @@ class BatchTransformNotifier extends Notifier<BatchTransformState> {
 
     if (isStale()) return;
     if (identical(_cancelToken, cancelToken)) _cancelToken = null;
+    final successCount =
+        results.where((r) => r.transformedBytes != null).length;
+    AnalyticsService.instance.batchComplete(
+      successCount: successCount,
+      failCount: results.length - successCount,
+    );
     state = state.copyWith(
       status: BatchStatus.reviewing,
       currentIndex: 0,
@@ -232,6 +240,10 @@ class BatchTransformNotifier extends Notifier<BatchTransformState> {
       }
 
       if (generation != _generation) return savedCount;
+      if (savedCount > 0) {
+        AnalyticsService.instance
+            .photoSaved(source: 'batch', count: savedCount);
+      }
       state = state.copyWith(status: BatchStatus.done);
       developer.log('Batch save complete: $savedCount/${state.results.length}',
           name: 'BatchTransform');

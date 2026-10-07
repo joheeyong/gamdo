@@ -9,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/insta_ui.dart';
 import '../../../../core/widgets/instagram_widgets.dart';
 import '../../../analysis/presentation/analysis_provider.dart';
+import '../../../../core/services/analytics_service.dart';
 
 class InstagramLoginScreen extends ConsumerWidget {
   const InstagramLoginScreen({super.key});
@@ -29,7 +30,10 @@ class InstagramLoginScreen extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(top: 16),
                   child: GestureDetector(
-                    onTap: () => context.go(AppRoutes.home),
+                    onTap: () {
+                      AnalyticsService.instance.loginSkipped();
+                      context.go(AppRoutes.home);
+                    },
                     child: Text(
                       '\uB098\uC911\uC5D0 \uD558\uAE30',
                       style: context.textTheme.bodyMedium

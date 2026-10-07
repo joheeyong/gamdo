@@ -12,6 +12,7 @@ import '../../../../core/services/firebase_service.dart'
 export '../../../../core/providers/style_profile_provider.dart';
 import '../../../../core/services/instagram_service.dart';
 import '../../di/analysis_providers.dart';
+import '../../../../core/services/analytics_service.dart';
 
 class AnalysisResult {
   final int id;
@@ -154,6 +155,7 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
       final totalCount = postItems.length + feedItems.length + storiesRaw.length;
 
       if (totalCount == 0) {
+        AnalyticsService.instance.styleProfileFailed();
         state = state.copyWith(
           status: StyleAnalysisStatus.error,
           errorMessage: '분석할 게시글이 없습니다',
@@ -207,6 +209,7 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
       final recommendations = result['recommendations'] as List<dynamic>?;
 
       if (styleProfile == null) {
+        AnalyticsService.instance.styleProfileFailed();
         state = state.copyWith(
           status: StyleAnalysisStatus.error,
           errorMessage: '스타일 프로필 분석 결과가 없습니다',
@@ -232,11 +235,13 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
           mergeLearnedTargetParams(
               styleProfile, ref.read(userStyleProfileProvider));
 
+      AnalyticsService.instance.styleProfileCreated();
       state = state.copyWith(status: StyleAnalysisStatus.completed);
       developer.log('Style analysis completed', name: 'StyleAnalysis');
     } catch (e) {
       developer.log('Style analysis failed: $e', name: 'StyleAnalysis');
       final msg = e is ApiException ? e.userMessage : '분석 중 오류가 발생했습니다. 다시 시도해 주세요';
+      AnalyticsService.instance.styleProfileFailed();
       state = state.copyWith(
         status: StyleAnalysisStatus.error,
         errorMessage: msg,

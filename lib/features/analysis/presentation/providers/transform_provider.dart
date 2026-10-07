@@ -19,6 +19,7 @@ import '../../domain/entities/analysis_job_progress.dart';
 import '../../domain/entities/stored_transform.dart';
 import '../../domain/repositories/analysis_repository.dart';
 import '../../domain/entities/transform_params.dart';
+import '../../../../core/services/analytics_service.dart';
 
 // Re-export TransformParams so existing consumers still see it here
 export '../../domain/entities/transform_params.dart';
@@ -265,6 +266,7 @@ class TransformNotifier extends Notifier<TransformState> {
     final token = CancelToken();
     _autoTransformCancelToken = token;
     _bytesAreFullQuality = false;
+    final analyticsTimer = Stopwatch()..start();
 
     // 새 사진을 시작할 때 이전 사진의 결과를 전부 비운다. copyWith는 null로
     // 되돌릴 수 없어 regionParams·톤 커브·보정 설명 등이 다음 사진에 새어 들었다.
@@ -302,6 +304,7 @@ class TransformNotifier extends Notifier<TransformState> {
       final styleProfile = style.profile;
       if (!_isCurrent(token)) return null;
       final manualStyle = editStyleById(style.choice);
+      AnalyticsService.instance.analysisStart(style: style.choice);
 
       final result = await repo.analyzeAndTransformRecord(
         imageFile: imageFile,
@@ -329,6 +332,8 @@ class TransformNotifier extends Notifier<TransformState> {
           result.fullResult['analysis'] as Map<String, dynamic>?;
 
       if (imageB64 == null) {
+        AnalyticsService.instance.analysisFail(
+            reason: 'no_image', elapsed: analyticsTimer.elapsed);
         state = state.copyWith(
           status: TransformStatus.error,
           errorMessage: '변형된 이미지를 받지 못했습니다',
@@ -354,6 +359,8 @@ class TransformNotifier extends Notifier<TransformState> {
         appliedStyleName: manualStyle?.name,
       );
       _bytesAreFullQuality = true;
+      AnalyticsService.instance
+          .analysisSuccess(elapsed: analyticsTimer.elapsed);
 
       return (
         analysisJson: result.analysisJson,
@@ -368,6 +375,10 @@ class TransformNotifier extends Notifier<TransformState> {
       developer.log('analyzeAndTransform failed: $e', name: 'Transform');
       // 새 요청에 밀린 이전 요청의 실패가 새 요청의 로딩 상태를 덮지 않게
       if (!_isCurrent(token)) return null;
+      AnalyticsService.instance.analysisFail(
+        reason: e.response?.statusCode != null ? 'server' : 'network',
+        elapsed: analyticsTimer.elapsed,
+      );
       final msg = e.response?.statusCode != null
           ? ApiException(message: e.message ?? '', statusCode: e.response?.statusCode).userMessage
           : '인터넷 연결을 확인해 주세요';
@@ -378,6 +389,10 @@ class TransformNotifier extends Notifier<TransformState> {
     } catch (e) {
       developer.log('analyzeAndTransform failed: $e', name: 'Transform');
       if (!_isCurrent(token)) return null;
+      AnalyticsService.instance.analysisFail(
+        reason: e is ApiException ? 'server' : 'unknown',
+        elapsed: analyticsTimer.elapsed,
+      );
       final msg = e is ApiException ? e.userMessage : '분석 중 오류가 발생했습니다. 다시 시도해 주세요';
       state = state.copyWith(
         status: TransformStatus.error,
@@ -739,6 +754,7 @@ class TransformNotifier extends Notifier<TransformState> {
       );
       await File(savePath).writeAsBytes(bytes);
       await Gal.putImage(savePath, album: 'Gamdo');
+      AnalyticsService.instance.photoSaved(source: 'single');
       // 갤러리 저장은 끝났다. 임시 파일 정리 실패를 저장 실패로 알리지 않는다.
       try {
         await File(savePath).delete();

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'analytics_service.dart';
 
 /// 공유 시도 결과.
 enum InstagramShareResult {
@@ -48,14 +49,24 @@ class InstagramShareService {
 
   /// 스토리 편집 화면으로 사진을 넘긴다.
   Future<InstagramShareResult> shareToStory(Uint8List imageBytes) =>
-      _share('shareToStory', imageBytes);
+      _shareLogged('story', 'shareToStory', imageBytes);
 
   /// 피드 편집 화면으로 사진을 넘긴다.
   ///
   /// iOS에서는 사진 앨범에 먼저 저장한 뒤 그 사진을 열기 때문에,
   /// 앨범에 한 장이 남는다 (인스타그램이 앨범의 사진만 참조할 수 있다).
   Future<InstagramShareResult> shareToFeed(Uint8List imageBytes) =>
-      _share('shareToFeed', imageBytes);
+      _shareLogged('feed', 'shareToFeed', imageBytes);
+
+  Future<InstagramShareResult> _shareLogged(
+    String target,
+    String method,
+    Uint8List imageBytes,
+  ) async {
+    final result = await _share(method, imageBytes);
+    AnalyticsService.instance.share(target: target, result: result.name);
+    return result;
+  }
 
   Future<InstagramShareResult> _share(
     String method,

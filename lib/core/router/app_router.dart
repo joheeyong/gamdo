@@ -17,6 +17,7 @@ import '../../features/analysis/presentation/transform_screen.dart';
 import '../../features/history/presentation/history_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../providers/auth_provider.dart';
+import '../services/analytics_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/insta_ui.dart';
 import '../widgets/instagram_widgets.dart';
@@ -41,7 +42,7 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 @Riverpod(keepAlive: true)
 GoRouter router(Ref ref) {
-  return GoRouter(
+  final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     routes: [
@@ -112,6 +113,24 @@ GoRouter router(Ref ref) {
       ),
     ],
   );
+  _trackScreenViews(router);
+  return router;
+}
+
+/// 경로가 바뀔 때마다 화면 조회를 기록한다.
+///
+/// 하단 탭(ShellRoute) 이동도 잡도록 Navigator 관찰자 대신 라우터 상태를 본다.
+/// 같은 경로가 연달아 알려지면(상태 갱신·리빌드) 한 번만 남긴다.
+void _trackScreenViews(GoRouter router) {
+  String? lastPath;
+  void report() {
+    final path = router.routerDelegate.currentConfiguration.uri.path;
+    if (path.isEmpty || path == lastPath) return;
+    lastPath = path;
+    AnalyticsService.instance.screenView(path);
+  }
+
+  router.routerDelegate.addListener(report);
 }
 
 /// Instagram-style bottom navigation shell

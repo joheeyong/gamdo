@@ -14,6 +14,7 @@ import '../../../../core/services/storage_service.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/instagram_auth.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../../../core/services/analytics_service.dart';
 
 // Re-export InstagramAuth so consumers that import auth_provider see it
 export '../../domain/entities/instagram_auth.dart';
@@ -107,9 +108,11 @@ class InstagramAuthNotifier extends Notifier<InstagramAuth> {
       final authRepo = ref.read(authRepositoryProvider);
       final result = await authRepo.login();
       state = result;
+      AnalyticsService.instance.loginSuccess();
       return true;
     } catch (e) {
       developer.log('Instagram login failed: $e', name: 'InstagramAuth');
+      if (!isLoginCancelled(e)) AnalyticsService.instance.loginFailed();
       // 사용자가 로그인 창을 닫은 건 오류가 아니다 — 메시지 없이 원래대로.
       state = state.copyWith(
         isLoading: false,

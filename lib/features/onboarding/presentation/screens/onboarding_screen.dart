@@ -7,6 +7,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/insta_ui.dart';
+import '../../../../core/services/analytics_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -51,6 +52,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _completeOnboarding() async {
     final storage = StorageService();
     await storage.setOnboardingComplete();
+    AnalyticsService.instance.onboardingComplete();
     if (mounted) context.go(AppRoutes.instagramLogin);
   }
 
