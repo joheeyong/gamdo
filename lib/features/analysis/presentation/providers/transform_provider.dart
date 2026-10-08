@@ -267,6 +267,7 @@ class TransformNotifier extends Notifier<TransformState> {
     _autoTransformCancelToken = token;
     _bytesAreFullQuality = false;
     final analyticsTimer = Stopwatch()..start();
+    var started = false; // analysis_start를 보냈는지 (아래 퍼널 주석 참고)
 
     // 새 사진을 시작할 때 이전 사진의 결과를 전부 비운다. copyWith는 null로
     // 되돌릴 수 없어 regionParams·톤 커브·보정 설명 등이 다음 사진에 새어 들었다.
@@ -288,6 +289,19 @@ class TransformNotifier extends Notifier<TransformState> {
         userId = authState.userId ?? '';
       } catch (_) {}
 
+      // 분석 퍼널: analysis_start는 '사용자가 분석을 시작했다'는 뜻이라
+      // 이미지 처리보다 먼저 보낸다. 그래야 이미지 처리 실패도 start+fail 짝으로
+      // 남는다. 스타일 선택값이 start 매개변수라 스타일부터 정한다.
+      // fail/success는 start를 보낸 실행에서만 보낸다(started). 새 요청에 밀렸거나
+      // 취소된 실행은 fail을 남기지 않는다 — start만 남아 '이탈'로 집계된다.
+      // 설정의 '보정 스타일'을 반영한 프로필 (자동이면 저장된 프로필 그대로)
+      final style = await resolveRequestStyle(ref);
+      final styleProfile = style.profile;
+      if (!_isCurrent(token)) return null;
+      final manualStyle = editStyleById(style.choice);
+      AnalyticsService.instance.analysisStart(style: style.choice);
+      started = true;
+
       final fullProcessed = await imageService.processImage(imageFile);
       final previewBase64 = await imageService.processPreviewImage(imageFile);
       if (!_isCurrent(token)) return null;
@@ -299,12 +313,7 @@ class TransformNotifier extends Notifier<TransformState> {
 
       final reshapeEnabled = await _reshapeEnabled();
       final skinRetouchEnabled = await _skinRetouchEnabled();
-      // 설정의 '보정 스타일'을 반영한 프로필 (자동이면 저장된 프로필 그대로)
-      final style = await resolveRequestStyle(ref);
-      final styleProfile = style.profile;
       if (!_isCurrent(token)) return null;
-      final manualStyle = editStyleById(style.choice);
-      AnalyticsService.instance.analysisStart(style: style.choice);
 
       final result = await repo.analyzeAndTransformRecord(
         imageFile: imageFile,
@@ -375,10 +384,12 @@ class TransformNotifier extends Notifier<TransformState> {
       developer.log('analyzeAndTransform failed: $e', name: 'Transform');
       // 새 요청에 밀린 이전 요청의 실패가 새 요청의 로딩 상태를 덮지 않게
       if (!_isCurrent(token)) return null;
-      AnalyticsService.instance.analysisFail(
-        reason: e.response?.statusCode != null ? 'server' : 'network',
-        elapsed: analyticsTimer.elapsed,
-      );
+      if (started) {
+        AnalyticsService.instance.analysisFail(
+          reason: e.response?.statusCode != null ? 'server' : 'network',
+          elapsed: analyticsTimer.elapsed,
+        );
+      }
       final msg = e.response?.statusCode != null
           ? ApiException(message: e.message ?? '', statusCode: e.response?.statusCode).userMessage
           : '인터넷 연결을 확인해 주세요';
@@ -389,10 +400,12 @@ class TransformNotifier extends Notifier<TransformState> {
     } catch (e) {
       developer.log('analyzeAndTransform failed: $e', name: 'Transform');
       if (!_isCurrent(token)) return null;
-      AnalyticsService.instance.analysisFail(
-        reason: e is ApiException ? 'server' : 'unknown',
-        elapsed: analyticsTimer.elapsed,
-      );
+      if (started) {
+        AnalyticsService.instance.analysisFail(
+          reason: e is ApiException ? 'server' : 'unknown',
+          elapsed: analyticsTimer.elapsed,
+        );
+      }
       final msg = e is ApiException ? e.userMessage : '분석 중 오류가 발생했습니다. 다시 시도해 주세요';
       state = state.copyWith(
         status: TransformStatus.error,

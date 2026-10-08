@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -10,6 +11,7 @@ import '../../../../core/theme/app_colors.dart';
 /// - 두 손가락으로 확대/이동, 두 번 탭하면 그 지점 확대 ↔ 원래 크기
 /// - Before/After를 바꿔도 확대 위치는 그대로 — 같은 곳을 비교하기 좋다
 /// - After에서 길게 누르고 있으면 그동안만 원본을 보여 준다
+///   (원래 크기에서 한 손가락일 때만 — 확대·이동을 가로채지 않도록)
 /// - 한 번 탭하면 상단 바·안내를 숨기거나 다시 보인다
 class PhotoViewerScreen extends StatefulWidget {
   final File originalImage;
@@ -114,6 +116,14 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
     _zoomAnim.forward(from: 0);
   }
 
+  /// 길게 눌러 원본 보기를 시작해도 되는지 — 손가락이 닿는 순간에 판단한다.
+  ///
+  /// 확대된 상태(또는 확대 애니메이션 중)에서는 한 손가락 드래그가 이동이므로
+  /// 길게 누르기가 제스처 경쟁(arena)에 아예 들어가지 않게 한다. 그래야
+  /// 잠깐 멈췄다가 끌어도 이동이 끊기지 않는다.
+  bool _canPeek() =>
+      !_zoomAnim.isAnimating && _transform.value.getMaxScaleOnAxis() <= 1.01;
+
   Widget _image(int which) {
     final Widget img = which == 1
         ? Image.memory(
@@ -144,17 +154,31 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
                 onTap: () => setState(() => _chromeVisible = !_chromeVisible),
                 onDoubleTapDown: (d) => _doubleTapAt = d.localPosition,
                 onDoubleTap: _toggleZoom,
-                onLongPressStart: _hasBoth
-                    ? (_) => setState(() => _peeking = true)
-                    : null,
-                onLongPressEnd: _hasBoth
-                    ? (_) => setState(() => _peeking = false)
-                    : null,
-                child: InteractiveViewer(
-                  transformationController: _transform,
-                  minScale: 1,
-                  maxScale: 6,
-                  child: _image(_shown),
+                child: RawGestureDetector(
+                  gestures: {
+                    if (_hasBoth)
+                      _PeekPressRecognizer:
+                          GestureRecognizerFactoryWithHandlers<
+                            _PeekPressRecognizer
+                          >(
+                            () => _PeekPressRecognizer(
+                              canStart: _canPeek,
+                              debugOwner: this,
+                            ),
+                            (r) {
+                              r.onLongPressStart = (_) =>
+                                  setState(() => _peeking = true);
+                              r.onLongPressEnd = (_) =>
+                                  setState(() => _peeking = false);
+                            },
+                          ),
+                  },
+                  child: InteractiveViewer(
+                    transformationController: _transform,
+                    minScale: 1,
+                    maxScale: 6,
+                    child: _image(_shown),
+                  ),
                 ),
               ),
             ),
@@ -205,6 +229,27 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen>
         ),
       ),
     );
+  }
+}
+
+/// 원본 보기용 길게 누르기.
+///
+/// 기본 [LongPressGestureRecognizer]는 손가락이 500ms 동안 가만히 있으면
+/// [InteractiveViewer]의 확대/이동 인식기를 이기고 제스처를 가져가 버린다.
+/// 그래서 다음 경우에는 처음부터 물러난다.
+/// - [canStart]가 false일 때(확대된 상태) — 경쟁에 참여하지 않는다
+/// - 이미 한 손가락을 추적 중인데 두 번째 손가락이 닿을 때(핀치 시작) —
+///   스스로 거절해서 확대 인식기가 이기게 둔다
+class _PeekPressRecognizer extends LongPressGestureRecognizer {
+  final bool Function() canStart;
+
+  _PeekPressRecognizer({required this.canStart, super.debugOwner});
+
+  @override
+  bool isPointerAllowed(PointerDownEvent event) {
+    // 두 번째 손가락: false를 돌려주면 handleNonAllowedPointer가 거절 처리한다.
+    if (state != GestureRecognizerState.ready) return false;
+    return canStart() && super.isPointerAllowed(event);
   }
 }
 

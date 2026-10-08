@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../../../core/widgets/insta_ui.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -61,17 +62,35 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // 네이티브 실행 화면과 같은 종이/먹색 바탕 — 이어질 때 색이 튀지 않는다
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Text(
-            '\uAC10\uB3C4',
-            style: AppTypography.wordmark.copyWith(
-              fontSize: 44,
-              letterSpacing: 2,
-              color: context.instaPrimaryText,
+    // 스플래시는 앱 내 테마 설정이 아니라 '시스템' 밝기를 따른다.
+    // 네이티브 실행 화면(Android values-night / iOS LaunchBackground 색 에셋)은
+    // 앱 설정을 읽을 수 없고 시스템 다크 모드만 따르므로, 여기서도 시스템 기준으로
+    // 같은 종이/먹색을 써야 실행 화면 → 스플래시 사이에 색이 튀지 않는다.
+    // (스플래시 → 첫 화면 전환부터는 앱 설정을 따른다.)
+    final isDark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    final background =
+        isDark ? AppColors.backgroundDark : AppColors.backgroundLight;
+    final textColor =
+        isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+          .copyWith(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: background,
+      ),
+      child: Scaffold(
+        backgroundColor: background,
+        body: Center(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Text(
+              '\uAC10\uB3C4',
+              style: AppTypography.wordmark.copyWith(
+                fontSize: 44,
+                letterSpacing: 2,
+                color: textColor,
+              ),
             ),
           ),
         ),

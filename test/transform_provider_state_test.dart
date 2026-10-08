@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gamdo/core/providers/style_profile_provider.dart';
+import 'package:gamdo/core/services/analytics_service.dart';
 import 'package:gamdo/core/services/image_service.dart';
 import 'package:gamdo/features/analysis/di/analysis_providers.dart';
 import 'package:gamdo/features/analysis/domain/entities/analysis_job_progress.dart';
@@ -22,9 +23,14 @@ typedef _Result = ({
 });
 
 class _FakeImageService extends ImageService {
+  /// true면 processImage가 실패한다 (로컬 이미지 처리 오류).
+  bool fail = false;
+
   @override
-  Future<({File file, String base64})> processImage(File originalFile) async =>
-      (file: originalFile, base64: 'FULL');
+  Future<({File file, String base64})> processImage(File originalFile) async {
+    if (fail) throw const FileSystemException('decode failed');
+    return (file: originalFile, base64: 'FULL');
+  }
 
   @override
   Future<String> processPreviewImage(File originalFile) async => 'PREVIEW';
@@ -149,20 +155,29 @@ _Result _result(String savedPath,
 void main() {
   late _FakeAnalysisRepository analysisRepo;
   late _FakeTransformRepository transformRepo;
+  late _FakeImageService imageService;
   late ProviderContainer container;
+  late List<String> events;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     analysisRepo = _FakeAnalysisRepository();
     transformRepo = _FakeTransformRepository();
+    imageService = _FakeImageService();
+    events = [];
+    AnalyticsService.instance.debugEventSink = (name, params) => events.add(
+        name == 'analysis_fail' ? '$name:${params?['reason']}' : name);
     container = ProviderContainer(overrides: [
       analysisRepositoryDIProvider.overrideWithValue(analysisRepo),
       transformRepositoryProvider.overrideWithValue(transformRepo),
-      imageServiceProvider.overrideWithValue(_FakeImageService()),
+      imageServiceProvider.overrideWithValue(imageService),
     ]);
   });
 
-  tearDown(() => container.dispose());
+  tearDown(() {
+    AnalyticsService.instance.debugEventSink = null;
+    container.dispose();
+  });
 
   TransformNotifier notifier() => container.read(transformProvider.notifier);
   TransformState state() => container.read(transformProvider);
@@ -402,5 +417,71 @@ void main() {
     second.complete(_result('/saved/b.jpg'));
     await Future.wait([f1, f2]);
     expect(state().status, TransformStatus.ready);
+  });
+
+  group('분석 퍼널 이벤트 (모든 fail/success 앞에 start가 하나)', () {
+    test('성공하면 start → success', () async {
+      analysisRepo.next = (f, t) async => _result('/saved/a.jpg');
+      await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+      expect(events, ['analysis_start', 'analysis_success']);
+    });
+
+    test('로컬 이미지 처리가 실패해도 start → fail로 짝이 맞는다', () async {
+      imageService.fail = true;
+      await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+      expect(state().status, TransformStatus.error);
+      expect(events, ['analysis_start', 'analysis_fail:unknown']);
+    });
+
+    test('서버 오류는 start → fail(server/network)', () async {
+      analysisRepo.next = (f, t) async => throw DioException(
+            requestOptions: RequestOptions(path: '/x'),
+            type: DioExceptionType.connectionError,
+          );
+      await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+      expect(events, ['analysis_start', 'analysis_fail:network']);
+    });
+
+    test('새 요청에 밀린 실행은 fail을 남기지 않는다', () async {
+      final first = Completer<_Result>();
+      var call = 0;
+      analysisRepo.next = (f, t) async =>
+          ++call == 1 ? first.future : _result('/saved/b.jpg');
+
+      final f1 = notifier().analyzeAndTransform(File('/picked/a.jpg'));
+      await pumpEventQueue();
+      await notifier().analyzeAndTransform(File('/picked/b.jpg'));
+      first.completeError(Exception('old request failed'));
+      await f1;
+
+      expect(events,
+          ['analysis_start', 'analysis_start', 'analysis_success']);
+    });
+
+    test('이미지 처리 전에 밀린 실행은 아무 이벤트도 남기지 않는다', () async {
+      analysisRepo.next = (f, t) async => _result('/saved/b.jpg');
+      // 두 호출을 같은 틱에 시작 — 첫 실행은 스타일을 정하는 await에서 밀린다
+      final f1 = notifier().analyzeAndTransform(File('/picked/a.jpg'));
+      final f2 = notifier().analyzeAndTransform(File('/picked/b.jpg'));
+      expect(await f1, isNull);
+      expect(await f2, isNotNull);
+      expect(events, ['analysis_start', 'analysis_success']);
+    });
+
+    test('취소하면 fail을 남기지 않는다', () async {
+      final completer = Completer<_Result>();
+      analysisRepo.next = (f, t) {
+        t?.whenCancel.then((_) => completer.completeError(DioException(
+              requestOptions: RequestOptions(path: '/x'),
+              type: DioExceptionType.cancel,
+            )));
+        return completer.future;
+      };
+      final future = notifier().analyzeAndTransform(File('/picked/a.jpg'));
+      await pumpEventQueue();
+      notifier().cancelAutoTransform();
+      expect(await future, isNull);
+      expect(events, ['analysis_start']);
+    });
   });
 }

@@ -13,6 +13,8 @@
 
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
-        <item name="android:windowBackground">?android:colorBackground</item>
+        <!-- 실행 화면과 같은 종이/먹색(시스템 다크 모드 기준). 테마 기본값(?android:colorBackground =
+             흰색/검정)을 쓰면 실행 화면 → Flutter 첫 프레임 사이에 다른 색이 비칠 수 있다. -->
+        <item name="android:windowBackground">@color/gamdo_launch_background</item>
     </style>
 </resources>

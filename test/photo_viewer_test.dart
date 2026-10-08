@@ -72,6 +72,67 @@ void main() {
     expect(showsAfter(tester), isTrue);
   });
 
+  testWidgets('확대한 상태에서는 가만히 눌렀다 끌어도 원본으로 바뀌지 않고 이동한다', (tester) async {
+    await pump(tester, after: _png);
+    final center = tester.getCenter(find.byType(InteractiveViewer));
+
+    // 두 번 탭으로 확대
+    await tester.tapAt(center);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(center);
+    await tester.pumpAndSettle();
+    expect(controller(tester).value.getMaxScaleOnAxis(), closeTo(2.5, 0.01));
+    final before = controller(tester).value.getTranslation();
+
+    // 손가락을 길게 대고 있다가(길게 누르기 시간 초과) 끈다
+    final gesture = await tester.startGesture(center);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(showsAfter(tester), isTrue);
+    expect(find.text('Before (원본)'), findsNothing);
+
+    for (var i = 0; i < 5; i++) {
+      await gesture.moveBy(const Offset(20, 10));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(showsAfter(tester), isTrue);
+    expect(find.text('Before (원본)'), findsNothing);
+    final moved = controller(tester).value.getTranslation();
+    expect(moved.x, greaterThan(before.x));
+    expect(moved.y, greaterThan(before.y));
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(showsAfter(tester), isTrue);
+  });
+
+  testWidgets('두 손가락으로 천천히 집어도 원본으로 바뀌지 않고 확대된다', (tester) async {
+    await pump(tester, after: _png);
+    final center = tester.getCenter(find.byType(InteractiveViewer));
+
+    final first = await tester.startGesture(center - const Offset(30, 0));
+    await tester.pump(const Duration(milliseconds: 200));
+    final second = await tester.startGesture(
+      center + const Offset(30, 0),
+      pointer: 2,
+    );
+    // 두 손가락 모두 가만히 — 길게 누르기 시간을 넘긴다
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(showsAfter(tester), isTrue);
+    expect(find.text('Before (원본)'), findsNothing);
+
+    for (var i = 0; i < 5; i++) {
+      await first.moveBy(const Offset(-15, 0));
+      await second.moveBy(const Offset(15, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(showsAfter(tester), isTrue);
+    expect(controller(tester).value.getMaxScaleOnAxis(), greaterThan(1.5));
+
+    await first.up();
+    await second.up();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('두 번 탭하면 확대, 다시 두 번 탭하면 원래 크기', (tester) async {
     await pump(tester, after: _png);
     final center = tester.getCenter(find.byType(InteractiveViewer));

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ 시스템 스플래시: windowBackground가 단색이 아니면(layer-list) 무시되고
+         테마 기본색(흰색/검정)이 쓰이므로, 실행 화면 색을 명시해 Flutter 스플래시와 맞춘다.
+         (시스템 다크 모드 기준 — values-night-v31 이 다크 쪽) -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/gamdo_launch_background</item>
+    </style>
+</resources>

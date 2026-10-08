@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 
 /// Firebase Analytics 이벤트를 한곳에서 보낸다.
 ///
@@ -36,8 +37,14 @@ class AnalyticsService {
     );
   }
 
-  void _event(String name, [Map<String, Object>? params]) =>
-      _send((a) => a.logEvent(name: name, parameters: params));
+  /// 테스트에서 보낸 이벤트를 기록하려고 둔다. 운영 코드에서는 쓰지 않는다.
+  @visibleForTesting
+  void Function(String name, Map<String, Object>? params)? debugEventSink;
+
+  void _event(String name, [Map<String, Object>? params]) {
+    debugEventSink?.call(name, params);
+    _send((a) => a.logEvent(name: name, parameters: params));
+  }
 
   /// 화면 이동. [path]는 라우트 경로(`/home` 등)다.
   void screenView(String path) {
