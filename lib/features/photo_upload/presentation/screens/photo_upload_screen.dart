@@ -183,8 +183,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
           title: const Text(
             '\uC0C8 \uBD84\uC11D',
             style: TextStyle(
-              fontFamily: AppTypography.serifFamily,
-              fontFamilyFallback: AppTypography.serifFallback,
+              fontFamily: AppTypography.fontFamily,
               fontSize: 17,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimaryDark,

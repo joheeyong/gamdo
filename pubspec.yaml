@@ -103,10 +103,12 @@ flutter:
           weight: 800
         - asset: assets/fonts/Pretendard-Black.otf
           weight: 900
-    # 제목·워드마크용 명조. KS X 1001 한글 2,350자 + 라틴만 남긴 서브셋 (OFL)
-    - family: NotoSerifKR
+    # 숫자·영문 라벨용 (점수, 수치). 라틴 서브셋만 담겨 있다 (OFL)
+    - family: Geist
       fonts:
-        - asset: assets/fonts/NotoSerifKR-SemiBold.ttf
+        - asset: assets/fonts/Geist-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Geist-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/NotoSerifKR-Bold.ttf
+        - asset: assets/fonts/Geist-Bold.ttf
           weight: 700

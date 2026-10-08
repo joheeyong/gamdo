@@ -11,11 +11,15 @@ class InstagramGradientAvatar extends StatelessWidget {
   final double borderWidth;
   final Widget child;
 
+  /// 링 색. 기본은 앱의 라임 링, 인스타그램 연결 화면은 인스타그램 링.
+  final Gradient gradient;
+
   const InstagramGradientAvatar({
     super.key,
     required this.size,
     this.borderWidth = 2,
     required this.child,
+    this.gradient = AppColors.ringGradient,
   });
 
   @override
@@ -23,9 +27,9 @@ class InstagramGradientAvatar extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: AppColors.ringGradient,
+        gradient: gradient,
       ),
       padding: EdgeInsets.all(borderWidth),
       child: Container(
@@ -49,23 +53,31 @@ class InstagramGradientButton extends StatelessWidget {
   final double height;
   final double borderRadius;
 
+  /// 버튼 바탕. 기본은 앱 강조색, 인스타그램 연결 버튼은 [AppColors.instagramGradient].
+  final Gradient gradient;
+
+  /// true면 가로를 가득 채우고, false면 내용 폭만큼만 차지하는 작은 알약이 된다.
+  final bool expand;
+
   const InstagramGradientButton({
     super.key,
     required this.onPressed,
     this.isLoading = false,
     required this.child,
     this.height = 48,
-    this.borderRadius = 8,
+    this.borderRadius = 999,
+    this.gradient = AppColors.brandGradient,
+    this.expand = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: double.infinity,
+      width: expand ? double.infinity : null,
       height: height,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: AppColors.brandGradient,
+          gradient: gradient,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
         child: ElevatedButton(
@@ -74,6 +86,10 @@ class InstagramGradientButton extends StatelessWidget {
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
             disabledBackgroundColor: Colors.transparent,
+            // 높이가 고정이라 테마의 위아래 여백을 쓰면 글자가 잘린다
+            padding: EdgeInsets.symmetric(horizontal: expand ? 16 : 18),
+            minimumSize: Size(0, height),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
           child: isLoading
               ? const SizedBox(

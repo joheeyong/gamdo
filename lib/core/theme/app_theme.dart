@@ -24,23 +24,20 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.backgroundLight,
       textTheme: AppTypography.textTheme(AppColors.textPrimaryLight),
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.surfaceLight,
+        backgroundColor: AppColors.backgroundLight,
         foregroundColor: AppColors.textPrimaryLight,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
-        // 상단바: 그림자 대신 종이 결의 헤어라인
-        shape: Border(
-          bottom: BorderSide(color: AppColors.dividerLight, width: 0.5),
-        ),
+        // 상단바: 바탕과 같은 색, 구분선 없이 카드가 떠 보이게
+        shape: Border(),
         titleTextStyle: TextStyle(
           inherit: false,
-          fontFamily: AppTypography.serifFamily,
-          fontFamilyFallback: AppTypography.serifFallback,
+          fontFamily: AppTypography.fontFamily,
           fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.6,
           height: 1.3,
           color: AppColors.textPrimaryLight,
         ),
@@ -50,20 +47,17 @@ class AppTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: AppColors.dividerLight, width: 0.5),
+          borderRadius: BorderRadius.circular(24),
         ),
       ),
-      // 주 버튼: 먹색 채움 위 종이색 글자 (필름 노트 시안의 '새 사진 보정하기')
+      // 주 버튼: 먹색 알약 위 흰 글자 (벤토 시안의 '새 사진 분석하기')
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.ink,
-          foregroundColor: AppColors.surfaceLight,
+          foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: const StadiumBorder(),
           textStyle: const TextStyle(
             inherit: false,
             fontFamily: AppTypography.fontFamily,
@@ -77,9 +71,7 @@ class AppTheme {
           foregroundColor: AppColors.textPrimaryLight,
           side: const BorderSide(color: AppColors.dividerLight),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: const StadiumBorder(),
           textStyle: const TextStyle(
             inherit: false,
             fontFamily: AppTypography.fontFamily,
@@ -119,9 +111,9 @@ class AppTheme {
           return const IconThemeData(color: AppColors.textSecondaryLight, size: 28);
         }),
       ),
-      // 토스트: 따뜻한 먹색 알약, 그림자 없음
+      // 토스트: 먹색 알약, 그림자 없음
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.floatingDark,
+        backgroundColor: AppColors.ink,
         contentTextStyle: const TextStyle(
           fontFamily: AppTypography.fontFamily,
           fontSize: 14,
@@ -132,14 +124,14 @@ class AppTheme {
         elevation: 0,
         insetPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(18),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.surfaceLight,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(24),
         ),
         titleTextStyle: const TextStyle(
           fontFamily: AppTypography.fontFamily,
@@ -159,7 +151,7 @@ class AppTheme {
         elevation: 0,
         showDragHandle: false,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
       ),
       // 체크마크 없는 알약형 칩
@@ -185,15 +177,15 @@ class AppTheme {
           color: AppColors.surfaceLight,
         ),
       ),
-      // 스위치: 켜면 앰버, 끄면 옅은 종이 트랙 위 회갈색 손잡이
+      // 스위치: 켜면 라임 트랙 위 먹색 손잡이, 끄면 옅은 회색 트랙
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
-                ? Colors.white
+                ? AppColors.ink
                 : AppColors.textSecondaryLight),
         trackColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
-                ? AppColors.primary
+                ? AppColors.highlight
                 : AppColors.secondaryFillLight),
         trackOutlineColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
@@ -223,10 +215,10 @@ class AppTheme {
         color: AppColors.dividerLight,
         thickness: 0.5,
       ),
-      // 입력 필드: 옅게 채운 종이 박스 + 1px 테두리, 라운드 8
+      // 입력 필드: 흰 박스 + 옅은 테두리, 라운드 14
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.backgroundLight,
+        fillColor: AppColors.surfaceLight,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         hintStyle: const TextStyle(
@@ -253,23 +245,23 @@ class AppTheme {
           color: AppColors.error,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.dividerLight),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.dividerLight),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.primary),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.error),
         ),
       ),
@@ -305,17 +297,14 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         systemOverlayStyle: SystemUiOverlayStyle.light,
-        // 상단바: 그림자 대신 종이 결의 헤어라인
-        shape: Border(
-          bottom: BorderSide(color: AppColors.dividerDark, width: 0.5),
-        ),
+        // 상단바: 바탕과 같은 색, 구분선 없이 카드가 떠 보이게
+        shape: Border(),
         titleTextStyle: TextStyle(
           inherit: false,
-          fontFamily: AppTypography.serifFamily,
-          fontFamilyFallback: AppTypography.serifFallback,
+          fontFamily: AppTypography.fontFamily,
           fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.6,
           height: 1.3,
           color: AppColors.textPrimaryDark,
         ),
@@ -325,20 +314,17 @@ class AppTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: AppColors.dividerDark, width: 0.5),
+          borderRadius: BorderRadius.circular(24),
         ),
       ),
-      // 주 버튼: 다크에서는 종이색 채움 위 먹색 글자
+      // 주 버튼: 다크에서는 회백색 알약 위 먹색 글자
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.textPrimaryDark,
           foregroundColor: AppColors.ink,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: const StadiumBorder(),
           textStyle: const TextStyle(
             inherit: false,
             fontFamily: AppTypography.fontFamily,
@@ -352,9 +338,7 @@ class AppTheme {
           foregroundColor: AppColors.textPrimaryDark,
           side: const BorderSide(color: AppColors.dividerDark),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: const StadiumBorder(),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -388,7 +372,7 @@ class AppTheme {
           return const IconThemeData(color: AppColors.textSecondaryDark, size: 28);
         }),
       ),
-      // 토스트: 따뜻한 먹색 알약, 그림자 없음
+      // 토스트: 먹색 알약, 그림자 없음
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.floatingDark,
         contentTextStyle: const TextStyle(
@@ -401,14 +385,14 @@ class AppTheme {
         elevation: 0,
         insetPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(18),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.surfaceDark,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(24),
         ),
         titleTextStyle: const TextStyle(
           fontFamily: AppTypography.fontFamily,
@@ -428,7 +412,7 @@ class AppTheme {
         elevation: 0,
         showDragHandle: false,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
       ),
       // 체크마크 없는 알약형 칩
@@ -454,15 +438,15 @@ class AppTheme {
           color: AppColors.surfaceDark,
         ),
       ),
-      // 스위치: 켜면 앰버, 끄면 어두운 트랙 위 회갈색 손잡이
+      // 스위치: 켜면 라임 트랙 위 먹색 손잡이, 끄면 어두운 트랙
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
-                ? Colors.white
+                ? AppColors.ink
                 : AppColors.textSecondaryDark),
         trackColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
-                ? AppColors.primary
+                ? AppColors.highlight
                 : AppColors.secondaryFillDark),
         trackOutlineColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
@@ -492,7 +476,7 @@ class AppTheme {
         color: AppColors.dividerDark,
         thickness: 0.5,
       ),
-      // 입력 필드: 옅게 채운 종이 박스 + 1px 테두리, 라운드 8
+      // 입력 필드: 흰 박스 + 옅은 테두리, 라운드 14
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceDark,
@@ -522,23 +506,23 @@ class AppTheme {
           color: AppColors.error,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.dividerDark),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.dividerDark),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.primary),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.error),
         ),
       ),

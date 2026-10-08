@@ -160,13 +160,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: AppColors.brandGradient,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(999),
                       ),
                       child: ElevatedButton(
                         onPressed: _onNext,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                         ),
                         child: Text(
                           _currentPage == _pages.length - 1 ? '\uC2DC\uC791\uD558\uAE30' : '\uB2E4\uC74C',

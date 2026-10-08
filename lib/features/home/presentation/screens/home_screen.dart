@@ -5,180 +5,260 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../core/extensions/color_extensions.dart';
+
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/database.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
-import '../../../../core/widgets/instagram_widgets.dart';
 import '../../../analysis/presentation/analysis_provider.dart';
 import '../providers/home_provider.dart';
 
+/// 홈 — 벤토 그리드.
+///
+/// 회백색 바탕 위에 크기가 다른 카드를 짜 맞춘다.
+/// 맨 위 큰 카드는 최근 보정한 사진, 그 아래 라임 카드는 분석한 사진 수,
+/// 흰 카드는 내 감도(스타일 프로필), 먹색 카드는 새 분석 버튼이다.
+/// 그 아래로 지난 기록을 둥근 사진 타일 두 열로 보여 준다.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
+
+  static const double _gap = 10;
+  static const EdgeInsets _pagePadding = EdgeInsets.fromLTRB(16, 4, 16, 24);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final analysesAsync = ref.watch(recentAnalysesProvider);
     final instagramAuth = ref.watch(instagramAuthProvider);
     final pipelineState = ref.watch(styleAnalysisPipelineProvider);
-    final hasStyleProfile = ref.watch(userStyleProfileProvider) != null;
+    final styleProfile = ref.watch(userStyleProfileProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '\uAC10\uB3C4',
+          '감도',
           style: AppTypography.wordmark.copyWith(
             fontSize: 26,
             color: context.instaPrimaryText,
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_box_outlined, size: 26),
-            tooltip: '\uC0C8 \uBD84\uC11D',
-            onPressed: () => context.push(AppRoutes.photoUpload),
-          ),
-          const SizedBox(width: 4),
+          if (instagramAuth.isConnected)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: _ConnectedPill(username: instagramAuth.username),
+            ),
         ],
       ),
-      body: Column(
-        children: [
-          // 분석 진행 상태 배너
-          if (pipelineState.status != StyleAnalysisStatus.idle)
-            _AnalysisBanner(state: pipelineState),
-          if (instagramAuth.isConnected)
-            _InstagramProfileCard(
-              auth: instagramAuth,
-              hasStyleProfile: hasStyleProfile,
-            ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                ref.invalidate(recentAnalysesProvider);
-                // 스트림이 새 데이터를 방출할 때까지 대기
-                await ref.read(recentAnalysesProvider.future);
-              },
-              child: analysesAsync.when(
-                data: (analyses) {
-                  if (analyses.isEmpty) return _EmptyFeed();
-                  return _AnalysisFeed(analyses: analyses);
-                },
-                loading: () => LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
-                      ),
-                    );
-                  },
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(recentAnalysesProvider);
+          // 스트림이 새 데이터를 방출할 때까지 대기
+          await ref.read(recentAnalysesProvider.future);
+        },
+        child: analysesAsync.when(
+          data: (analyses) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            children: [
+              if (pipelineState.status != StyleAnalysisStatus.idle)
+                _AnalysisBanner(state: pipelineState),
+              Padding(
+                padding: _pagePadding,
+                child: _BentoGrid(
+                  analyses: analyses,
+                  styleProfile: styleProfile,
                 ),
-                error: (e, st) {
-                  final message = e is ApiException
-                      ? e.userMessage
-                      : '\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4';
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      return SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                          child: Center(child: Text(message)),
-                        ),
-                      );
-                    },
-                  );
-                },
               ),
-            ),
+              if (analyses.length > 1) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Text(
+                    '지난 기록',
+                    style: AppTypography.sectionTitle
+                        .copyWith(color: context.instaPrimaryText),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  child: _RecordGrid(records: analyses.skip(1).toList()),
+                ),
+              ],
+            ],
           ),
-        ],
+          loading: () => LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
+                ),
+              );
+            },
+          ),
+          error: (e, st) {
+            final message = e is ApiException
+                ? e.userMessage
+                : '오류가 발생했습니다';
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(child: Text(message)),
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
 }
 
-class _InstagramProfileCard extends StatelessWidget {
-  final InstagramAuth auth;
-  final bool hasStyleProfile;
-  const _InstagramProfileCard({
-    required this.auth,
-    this.hasStyleProfile = false,
-  });
+/// 상단 바 오른쪽의 '인스타그램 연결됨' 알약.
+class _ConnectedPill extends StatelessWidget {
+  final String? username;
+  const _ConnectedPill({this.username});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary.withValues(alpha: 0.08),
-            AppColors.accent.withValues(alpha: 0.08),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.2),
-        ),
+        color: context.instaSurface,
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          InstagramGradientAvatar(
-            size: 40,
-            child: const Icon(
-              Icons.camera_alt,
-              size: 18,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  auth.username != null
-                      ? '@${auth.username}'
-                      : 'Instagram \uC5F0\uACB0\uB428',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  hasStyleProfile
-                      ? '\uC2A4\uD0C0\uC77C \uD504\uB85C\uD544 \uC801\uC6A9 \uC911'
-                      : '\uC2A4\uD0C0\uC77C \uD504\uB85C\uD544 \uBD84\uC11D \uAC00\uB2A5',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: hasStyleProfile
-                        ? AppColors.primary
-                        : AppColors.textSecondaryLight,
-                  ),
-                ),
-              ],
-            ),
-          ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              gradient: AppColors.brandGradient,
-              borderRadius: BorderRadius.circular(12),
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
             ),
-            child: const Text(
-              '\uC5F0\uACB0\uB428',
-              style: TextStyle(
+          ),
+          const SizedBox(width: 6),
+          Text(
+            username != null ? '@$username' : 'Instagram',
+            style: AppTypography.badge.copyWith(color: context.instaPrimaryText),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 벤토 카드 하나의 공통 껍데기.
+class _BentoCard extends StatelessWidget {
+  final Widget child;
+  final Color? color;
+  final double? height;
+  final EdgeInsetsGeometry padding;
+  final VoidCallback? onTap;
+
+  const _BentoCard({
+    required this.child,
+    this.color,
+    this.height,
+    this.padding = const EdgeInsets.all(18),
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final card = Container(
+      height: height,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: color ?? context.instaSurface,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
+    if (onTap == null) return card;
+    return GestureDetector(onTap: onTap, child: card);
+  }
+}
+
+class _BentoGrid extends StatelessWidget {
+  final List<AnalysisRecord> analyses;
+  final Map<String, dynamic>? styleProfile;
+
+  const _BentoGrid({required this.analyses, required this.styleProfile});
+
+  @override
+  Widget build(BuildContext context) {
+    const gap = HomeScreen._gap;
+    final latest = analyses.isEmpty ? null : analyses.first;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        latest == null ? const _EmptyHeroCard() : _LatestCard(record: latest),
+        const SizedBox(height: gap),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _CountCard(count: analyses.length)),
+              const SizedBox(width: gap),
+              Expanded(child: _StyleCard(profile: styleProfile)),
+            ],
+          ),
+        ),
+        const SizedBox(height: gap),
+        const _AnalyzeCard(),
+        if (latest == null) ...[
+          const SizedBox(height: gap),
+          const _GuideCard(),
+        ],
+      ],
+    );
+  }
+}
+
+/// 최근 보정한 사진 — 맨 위 큰 카드.
+class _LatestCard extends StatelessWidget {
+  final AnalysisRecord record;
+  const _LatestCard({required this.record});
+
+  @override
+  Widget build(BuildContext context) {
+    return _BentoCard(
+      height: 220,
+      padding: EdgeInsets.zero,
+      onTap: () => _openRecord(context, record),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _RecordImage(path: record.thumbnailPath ?? record.imagePath),
+          Positioned(
+            left: 14,
+            top: 14,
+            child: _OverlayChip(
+              text: '최근 보정 · ${record.styleCategory}',
+            ),
+          ),
+          Positioned(
+            right: 16,
+            bottom: 12,
+            child: Text(
+              _formatDate(record.createdAt),
+              style: AppTypography.number.copyWith(
+                fontSize: 13,
+                letterSpacing: 0,
                 color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+                shadows: const [Shadow(color: Colors.black38, blurRadius: 6)],
               ),
             ),
           ),
@@ -187,6 +267,383 @@ class _InstagramProfileCard extends StatelessWidget {
     );
   }
 }
+
+/// 기록이 없을 때 맨 위 큰 카드.
+class _EmptyHeroCard extends StatelessWidget {
+  const _EmptyHeroCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _BentoCard(
+      height: 220,
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Icon(Icons.photo_outlined, size: 32, color: context.instaSecondary),
+          const SizedBox(height: 14),
+          Text(
+            '아직 분석한 사진이 없어요',
+            style: AppTypography.sectionTitle.copyWith(
+              fontSize: 20,
+              color: context.instaPrimaryText,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '사진 한 장으로 내 감도를 찾아보세요',
+            style: AppTypography.secondary.copyWith(color: context.instaSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 라임 카드 — 분석한 사진 수.
+class _CountCard extends StatelessWidget {
+  final int count;
+  const _CountCard({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return _BentoCard(
+      color: AppColors.highlight,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '분석한 사진',
+            style: AppTypography.badge.copyWith(fontSize: 13, color: AppColors.ink),
+          ),
+          const SizedBox(height: 28),
+          Text(
+            '$count',
+            style: AppTypography.number.copyWith(
+              fontSize: 56,
+              letterSpacing: -2.5,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            count == 0 ? '첫 장을 기다려요' : '장 보정했어요',
+            style: AppTypography.meta.copyWith(fontSize: 12, color: AppColors.ink),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 흰 카드 — 내 감도 (스타일 프로필의 대표 색과 대표 스타일).
+class _StyleCard extends StatelessWidget {
+  final Map<String, dynamic>? profile;
+  const _StyleCard({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = profile?['primaryStyle'] as String?;
+    final colorPref = profile?['colorPreference'];
+    final raw = colorPref is Map ? colorPref['dominantColors'] : null;
+    final colors = <Color>[
+      if (raw is List)
+        for (final c in raw.take(4))
+          if (c is String && c.startsWith('#')) c.toColor(),
+    ];
+
+    return _BentoCard(
+      onTap: () => context.go(AppRoutes.settings),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '내 감도',
+            style: AppTypography.badge.copyWith(
+              fontSize: 13,
+              color: context.instaSecondary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              for (final c in colors.isEmpty ? _placeholder(context) : colors)
+                Expanded(
+                  child: Container(
+                    height: 34,
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      color: c,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            name ?? '아직 몰라요',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.sectionTitle.copyWith(
+              fontSize: 18,
+              color: context.instaPrimaryText,
+            ),
+          ),
+          if (name == null)
+            Text(
+              '인스타그램을 연결해 보세요',
+              style: AppTypography.meta.copyWith(
+                fontSize: 12,
+                color: context.instaSecondary,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  List<Color> _placeholder(BuildContext context) =>
+      List.filled(4, context.instaDivider);
+}
+
+/// 먹색 카드 — 새 사진 분석.
+class _AnalyzeCard extends StatelessWidget {
+  const _AnalyzeCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fill = isDark ? AppColors.textPrimaryDark : AppColors.ink;
+    final fg = isDark ? AppColors.ink : Colors.white;
+    final sub = isDark ? AppColors.textSecondaryLight : AppColors.textSecondaryDark;
+
+    return Semantics(
+      button: true,
+      label: '새 사진 분석하기',
+      excludeSemantics: true,
+      child: _BentoCard(
+        color: fill,
+        height: 84,
+        padding: const EdgeInsets.fromLTRB(24, 0, 12, 0),
+        onTap: () => context.push(AppRoutes.photoUpload),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '새 사진 분석하기',
+                    style: AppTypography.sectionTitle.copyWith(color: fg),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '내 감도로 자동 보정',
+                    style: AppTypography.meta.copyWith(fontSize: 12, color: sub),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 60,
+              height: 60,
+              decoration: const BoxDecoration(
+                color: AppColors.highlight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_forward_rounded, color: AppColors.ink, size: 26),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 기록이 없을 때 — 사용법 세 단계.
+class _GuideCard extends StatelessWidget {
+  const _GuideCard();
+
+  @override
+  Widget build(BuildContext context) {
+    const steps = [
+      '사진을 고르거나 카메라로 찍어요',
+      'AI가 색감·구도·톤을 읽어요',
+      '내 감도로 보정한 결과를 저장해요',
+    ];
+    return _BentoCard(
+      child: Column(
+        children: [
+          for (var i = 0; i < steps.length; i++)
+            Padding(
+              padding: EdgeInsets.only(bottom: i == steps.length - 1 ? 0 : 12),
+              child: Row(
+                children: [
+                  Text(
+                    '0${i + 1}',
+                    style: AppTypography.number.copyWith(
+                      fontSize: 15,
+                      letterSpacing: 0,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      steps[i],
+                      style: AppTypography.caption.copyWith(color: context.instaPrimaryText),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 지난 기록 — 둥근 사진 타일 두 열. 길게 누르면 변형·공유.
+class _RecordGrid extends StatelessWidget {
+  final List<AnalysisRecord> records;
+  const _RecordGrid({required this.records});
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: HomeScreen._gap,
+        crossAxisSpacing: HomeScreen._gap,
+        childAspectRatio: 0.82,
+      ),
+      itemCount: records.length,
+      itemBuilder: (context, i) => _RecordTile(record: records[i]),
+    );
+  }
+}
+
+class _RecordTile extends StatelessWidget {
+  final AnalysisRecord record;
+  const _RecordTile({required this.record});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _openRecord(context, record),
+      onLongPress: () => showInstaSheet(
+        context,
+        title: record.styleCategory,
+        actions: [
+          InstaSheetAction(
+            icon: Icons.auto_fix_high_outlined,
+            label: '사진 변형',
+            onTap: () => context.push(
+              AppRoutes.transform,
+              extra: {
+                'recordId': record.id,
+                'imagePath': record.imagePath,
+                'analysisJson': record.analysisJson,
+              },
+            ),
+          ),
+          InstaSheetAction(
+            icon: Icons.ios_share_outlined,
+            label: '공유',
+            onTap: () => SharePlus.instance.share(
+              ShareParams(
+                text: '감도 분석 결과\n'
+                    '스타일: ${record.styleCategory}\n'
+                    '#감도 #사진분석 #AI코칭',
+              ),
+            ),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _RecordImage(path: record.thumbnailPath ?? record.imagePath),
+            Positioned(
+              left: 10,
+              bottom: 10,
+              right: 10,
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: _OverlayChip(text: record.styleCategory),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 사진 위에 얹는 흰 알약 라벨.
+class _OverlayChip extends StatelessWidget {
+  final String text;
+  const _OverlayChip({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTypography.badge.copyWith(color: AppColors.ink),
+      ),
+    );
+  }
+}
+
+class _RecordImage extends StatelessWidget {
+  final String path;
+  const _RecordImage({required this.path});
+
+  @override
+  Widget build(BuildContext context) {
+    final file = File(path);
+    if (file.existsSync()) {
+      return Image.file(file, fit: BoxFit.cover);
+    }
+    return Container(
+      color: context.instaDivider,
+      child: Center(
+        child: Icon(Icons.image_outlined, size: 36, color: context.instaSecondary),
+      ),
+    );
+  }
+}
+
+void _openRecord(BuildContext context, AnalysisRecord record) {
+  context.push(
+    AppRoutes.analysisResult,
+    extra: {
+      'analysisId': record.id,
+      'analysisJson': record.analysisJson,
+      'imagePath': record.imagePath,
+      'transformedImagePath': record.thumbnailPath,
+    },
+  );
+}
+
+String _formatDate(DateTime d) =>
+    '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
 
 class _AnalysisBanner extends ConsumerStatefulWidget {
   final StyleAnalysisState state;
@@ -228,20 +685,20 @@ class _AnalysisBannerState extends ConsumerState<_AnalysisBanner> {
     final isInProgress = !isError && !isCompleted;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: isError
             ? AppColors.error.withValues(alpha: 0.1)
             : isCompleted
-                ? Colors.green.withValues(alpha: 0.1)
+                ? AppColors.success.withValues(alpha: 0.1)
                 : AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isError
               ? AppColors.error.withValues(alpha: 0.3)
               : isCompleted
-                  ? Colors.green.withValues(alpha: 0.3)
+                  ? AppColors.success.withValues(alpha: 0.3)
                   : AppColors.primary.withValues(alpha: 0.2),
         ),
       ),
@@ -257,7 +714,7 @@ class _AnalysisBannerState extends ConsumerState<_AnalysisBanner> {
             Icon(
               isCompleted ? Icons.check_circle : Icons.error_outline,
               size: 18,
-              color: isCompleted ? Colors.green : AppColors.error,
+              color: isCompleted ? AppColors.success : AppColors.error,
             ),
           const SizedBox(width: 10),
           Expanded(
@@ -288,345 +745,3 @@ class _AnalysisBannerState extends ConsumerState<_AnalysisBanner> {
   }
 }
 
-class _EmptyFeed extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  InstagramGradientAvatar(
-                    size: 96,
-                    borderWidth: 3,
-                    child: Icon(
-                      Icons.camera_alt_outlined,
-                      size: 36,
-                      color: context.instaSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    '\uC544\uC9C1 \uBD84\uC11D\uD55C \uC0AC\uC9C4\uC774 \uC5C6\uC2B5\uB2C8\uB2E4',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '\uC0AC\uC9C4\uC744 \uC5C5\uB85C\uB4DC\uD558\uACE0 AI \uAC10\uAC01 \uCF54\uCE6D\uC744 \uBC1B\uC544\uBCF4\uC138\uC694',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: context.instaSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // 사용법 가이드
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: Column(
-                      children: [
-                        _GuideStep(
-                          number: '1',
-                          text: '\uC0AC\uC9C4\uC744 \uC120\uD0DD\uD558\uAC70\uB098 \uCE74\uBA54\uB77C\uB85C \uCB2C\uC73C\uC138\uC694',
-                        ),
-                        const SizedBox(height: 8),
-                        _GuideStep(
-                          number: '2',
-                          text: 'AI\uAC00 \uC0C9\uAC10\u00B7\uAD6C\uB3C4\u00B7\uD1A4\uC744 \uBD84\uC11D\uD569\uB2C8\uB2E4',
-                        ),
-                        const SizedBox(height: 8),
-                        _GuideStep(
-                          number: '3',
-                          text: '\uB9DE\uCDA4 \uBCC0\uD615 \uACB0\uACFC\uB97C \uD655\uC778\uD558\uACE0 \uC800\uC7A5\uD558\uC138\uC694',
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: 200,
-                    child: InstagramGradientButton(
-                      height: 44,
-                      onPressed: () => context.push(AppRoutes.photoUpload),
-                      child: const Text(
-                        '\uCCAB \uC0AC\uC9C4 \uBD84\uC11D\uD558\uAE30',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _GuideStep extends StatelessWidget {
-  final String number;
-  final String text;
-  const _GuideStep({required this.number, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 22,
-          height: 22,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.primary.withValues(alpha: 0.12),
-          ),
-          child: Center(
-            child: Text(
-              number,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 13,
-              color: context.instaSecondary,
-              height: 1.3,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AnalysisFeed extends StatelessWidget {
-  final List<dynamic> analyses;
-  const _AnalysisFeed({required this.analyses});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: analyses.length,
-      itemBuilder: (context, index) {
-        final record = analyses[index];
-        return _FeedCard(record: record);
-      },
-    );
-  }
-}
-
-/// Instagram feed-style card
-class _FeedCard extends StatelessWidget {
-  final dynamic record;
-  const _FeedCard({required this.record});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push(
-        AppRoutes.analysisResult,
-        extra: {
-          'analysisId': record.id,
-          'analysisJson': record.analysisJson,
-          'imagePath': record.imagePath,
-          'transformedImagePath': record.thumbnailPath,
-        },
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                // Story-ring style avatar
-                InstagramGradientAvatar(
-                  size: 36,
-                  child: Padding(
-                    padding: const EdgeInsets.all(2),
-                    child: CircleAvatar(
-                      radius: 14,
-                      backgroundColor: context.instaDivider,
-                      child: Text(
-                        record.styleCategory.isNotEmpty ? record.styleCategory[0] : '?',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        record.styleCategory,
-                        style: AppTypography.username,
-                      ),
-                      Text(
-                        _formatDate(record.createdAt),
-                        style: AppTypography.meta
-                            .copyWith(color: context.instaSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Image (full-width, Instagram style)
-          AspectRatio(
-            aspectRatio: 1,
-            // 목록에 뜨는 그림은 변형(after) 결과. 없으면(v2 이전 기록) 원본.
-            child: _buildImage(
-              context,
-              record.thumbnailPath ?? record.imagePath,
-            ),
-          ),
-          // 액션 바 — 인스타그램 게시물의 아이콘 행
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 12, 0),
-            child: Row(
-              children: [
-                _FeedAction(
-                  icon: Icons.auto_fix_high_outlined,
-                  tooltip: '\uC0AC\uC9C4 \uBCC0\uD615',
-                  onTap: () => context.push(
-                    AppRoutes.transform,
-                    extra: {
-                      'recordId': record.id,
-                      'imagePath': record.imagePath,
-                      'analysisJson': record.analysisJson,
-                    },
-                  ),
-                ),
-                _FeedAction(
-                  icon: Icons.ios_share_outlined,
-                  tooltip: '\uACF5\uC720',
-                  onTap: () => SharePlus.instance.share(
-                    ShareParams(
-                      text: '\uD83D\uDCF8 \uAC10\uB3C4 \uBD84\uC11D \uACB0\uACFC\n'
-                          '\uC2A4\uD0C0\uC77C: ${record.styleCategory}\n'
-                          '#\uAC10\uB3C4 #\uC0AC\uC9C4\uBD84\uC11D #AI\uCF54\uCE6D',
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                _TempChip(temperature: record.colorTemperature),
-              ],
-            ),
-          ),
-          // \uCEA1\uC158 — \uC778\uC2A4\uD0C0\uADF8\uB7A8 \uAC8C\uC2DC\uBB3C\uC758 \uBCF8\uBB38 \uC904
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-            child: RichText(
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              text: TextSpan(
-                style: AppTypography.caption
-                    .copyWith(color: context.instaPrimaryText),
-                children: [
-                  TextSpan(
-                    text: record.styleCategory,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  TextSpan(
-                    text: '  \uD1A4\uC744 \uC77D\uACE0 \uB9DE\uCDA4 \uBCF4\uC815\uC744 \uC81C\uC548\uD588\uC5B4\uC694',
-                    style: TextStyle(color: context.instaSecondary),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-            child: Text(
-              _formatDate(record.createdAt),
-              style:
-                  AppTypography.meta.copyWith(color: context.instaSecondary),
-            ),
-          ),
-          const InstaHairline(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildImage(BuildContext context, String path) {
-    final file = File(path);
-    if (file.existsSync()) {
-      return Image.file(file, fit: BoxFit.cover);
-    }
-    return Container(
-      color: context.instaDivider,
-      child: Center(
-        child: Icon(Icons.image, size: 40, color: context.instaSecondary),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime d) =>
-      '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
-}
-
-class _TempChip extends StatelessWidget {
-  final String temperature;
-  const _TempChip({required this.temperature});
-
-  @override
-  Widget build(BuildContext context) {
-    final (Color c, String l) = switch (temperature) {
-      'warm' => (AppColors.warmColor, '\uB530\uB73B\uD55C'),
-      'cool' => (AppColors.coolColor, '\uCC28\uAC00\uC6B4'),
-      _ => (AppColors.neutralColor, '\uC911\uC131'),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(l, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c)),
-    );
-  }
-}
-
-/// 피드 카드 하단의 인스타그램식 액션 아이콘.
-class _FeedAction extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-
-  const _FeedAction({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      icon: Icon(icon, size: 24),
-      color: context.instaPrimaryText,
-      tooltip: tooltip,
-      visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-      padding: EdgeInsets.zero,
-      onPressed: onTap,
-    );
-  }
-}

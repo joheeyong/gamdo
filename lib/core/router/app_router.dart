@@ -155,7 +155,6 @@ class _InstaNavShellState extends ConsumerState<_InstaNavShell> {
   @override
   Widget build(BuildContext context) {
     final idx = _index(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isHome = idx == 0;
     final isConnected = ref.watch(instagramAuthProvider).isConnected;
 
@@ -176,51 +175,127 @@ class _InstaNavShellState extends ConsumerState<_InstaNavShell> {
       },
       child: Scaffold(
         body: widget.child,
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(
-                color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
-                width: 0.5,
+        // 벤토 탭 바: 흰 알약 안에 탭 세 개 + 오른쪽 라임 분석 버튼
+        bottomNavigationBar: _BentoTabBar(
+          selected: idx,
+          isConnected: isConnected,
+          onSelect: (i) {
+            switch (i) {
+              case 0: context.go(AppRoutes.home);
+              case 1: context.go(AppRoutes.history);
+              case 3: context.go(AppRoutes.settings);
+            }
+          },
+          onCreate: () => context.push(AppRoutes.photoUpload),
+        ),
+      ),
+    );
+  }
+}
+
+/// 벤토 하단 탭 바.
+///
+/// 흰(다크: 짙은 회색) 알약 안에 홈·기록·프로필 세 탭을 두고, 선택된 탭은 먹색
+/// 원으로 채운다. 사진 분석(만들기)은 탭이 아니라 오른쪽의 라임 원 버튼이다.
+/// [selected]는 기존 탭 번호를 그대로 쓴다 (0 홈, 1 기록, 3 프로필).
+class _BentoTabBar extends StatelessWidget {
+  final int selected;
+  final bool isConnected;
+  final ValueChanged<int> onSelect;
+  final VoidCallback onCreate;
+
+  const _BentoTabBar({
+    required this.selected,
+    required this.isConnected,
+    required this.onSelect,
+    required this.onCreate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final pill = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 64,
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: pill,
+                  borderRadius: BorderRadius.circular(32),
+                ),
+                child: Row(
+                  children: [
+                    _tab(context, 0, Icons.home_outlined, Icons.home_rounded, '홈'),
+                    _tab(context, 1, Icons.grid_view_outlined, Icons.grid_view_rounded, '기록'),
+                    _tab(context, 3, null, null, '프로필'),
+                  ],
+                ),
               ),
             ),
-          ),
-          child: NavigationBar(
-            height: 56,
-            selectedIndex: idx > 2 ? 3 : idx,
-            onDestinationSelected: (i) {
-              switch (i) {
-                case 0: context.go(AppRoutes.home);
-                case 1: context.go(AppRoutes.history);
-                case 2: context.push(AppRoutes.photoUpload); // 중앙 버튼 → 업로드
-                case 3: context.go(AppRoutes.settings);
-              }
-            },
-            destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: '홈',
+            const SizedBox(width: 10),
+            Semantics(
+              button: true,
+              label: '새 사진 분석',
+              child: Material(
+                color: AppColors.highlight,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: onCreate,
+                  child: const SizedBox(
+                    width: 64,
+                    height: 64,
+                    child: Icon(Icons.add_rounded, size: 30, color: AppColors.ink),
+                  ),
+                ),
               ),
-              const NavigationDestination(
-                icon: Icon(Icons.grid_on_outlined),
-                selectedIcon: Icon(Icons.grid_on),
-                label: '기록',
-              ),
-              // 인스타그램 '만들기' 탭: 모서리 둥근 사각 플러스
-              const NavigationDestination(
-                icon: Icon(Icons.add_box_outlined),
-                selectedIcon: Icon(Icons.add_box),
-                label: '만들기',
-              ),
-              // 인스타그램 프로필 탭: 선택 시 스토리 링이 감싼 아바타
-              NavigationDestination(
-                icon: _ProfileTabIcon(selected: false, isConnected: isConnected),
-                selectedIcon:
-                    _ProfileTabIcon(selected: true, isConnected: isConnected),
-                label: '프로필',
-              ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tab(
+    BuildContext context,
+    int index,
+    IconData? icon,
+    IconData? selectedIcon,
+    String label,
+  ) {
+    final isSelected = selected == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedFill = isDark ? AppColors.textPrimaryDark : AppColors.ink;
+    final selectedFg = isDark ? AppColors.ink : Colors.white;
+    final fg = isSelected ? selectedFg : context.instaPrimaryText;
+
+    final Widget glyph = icon == null
+        ? _ProfileTabIcon(selected: isSelected, isConnected: isConnected, color: fg)
+        : Icon(isSelected ? selectedIcon : icon, size: 24, color: fg);
+
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: isSelected,
+        label: label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onSelect(index),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            decoration: BoxDecoration(
+              color: isSelected ? selectedFill : Colors.transparent,
+              borderRadius: BorderRadius.circular(26),
+            ),
+            alignment: Alignment.center,
+            child: glyph,
           ),
         ),
       ),
@@ -234,13 +309,22 @@ class _InstaNavShellState extends ConsumerState<_InstaNavShell> {
 class _ProfileTabIcon extends StatelessWidget {
   final bool selected;
   final bool isConnected;
+  final Color? color;
 
-  const _ProfileTabIcon({required this.selected, required this.isConnected});
+  const _ProfileTabIcon({
+    required this.selected,
+    required this.isConnected,
+    this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (!isConnected) {
-      return Icon(selected ? Icons.person : Icons.person_outline);
+      return Icon(
+        selected ? Icons.person_rounded : Icons.person_outline_rounded,
+        size: 24,
+        color: color,
+      );
     }
 
     final avatar = CircleAvatar(

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
 import '../../domain/photo_analysis.dart';
@@ -59,106 +60,83 @@ class AnalysisResultScreen extends StatelessWidget {
     }
 
     final heroPath = transformedImagePath ?? imagePath;
+    // 서버가 대표 사진과 견줘 잰 피드 어울림(0~100). 대표 사진이 없던 분석이나
+    // 예전 기록에는 없다 — 그때는 점수 카드를 빼고 스타일 카드만 넓게 둔다.
+    final score = (analysisMap['feedCompatibility'] as num?)?.round();
+    final scoreBefore = (analysisMap['feedCompatibilityBefore'] as num?)?.round();
+
+    void share() {
+      final summary = StringBuffer()
+        ..writeln('감도 분석 결과')
+        ..writeln()
+        ..writeln('스타일: ${analysis.toneReport.styleCategory}')
+        ..writeln('분위기: ${analysis.toneReport.overallMood}')
+        ..writeln()
+        ..writeln('#감도 #사진분석 #AI코칭');
+      SharePlus.instance.share(ShareParams(text: summary.toString()));
+    }
 
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: '뒤로',
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
+        title: const Text('분석 결과'),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share_rounded, size: 22),
+            tooltip: '공유',
+            onPressed: share,
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       body: CustomScrollView(
         slivers: [
-          // App Bar with image
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            // 사진 위에 헤어라인이 겹치지 않게 테마의 하단 선을 끈다
-            shape: const Border(),
-            leading: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.arrow_back, color: Colors.white),
-              ),
-              onPressed: () {
-                if (Navigator.of(context).canPop()) {
-                  context.pop();
-                } else {
-                  context.go('/home');
-                }
-              },
-            ),
-            actions: [
-              IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
+          // 벤토: 큰 사진 카드 → 라임 점수 카드 + 스타일 카드
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: SizedBox(
+                    height: 300,
+                    child: heroPath != null
+                        ? Image.file(File(heroPath), fit: BoxFit.cover)
+                        : ColoredBox(color: context.instaDivider),
                   ),
-                  child: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
                 ),
-                tooltip: '\uACF5\uC720',
-                onPressed: () {
-                  final summary = StringBuffer()
-                    ..writeln('\uD83D\uDCF8 \uAC10\uB3C4 \uBD84\uC11D \uACB0\uACFC')
-                    ..writeln()
-                    ..writeln('\uC2A4\uD0C0\uC77C: ${analysis.toneReport.styleCategory}')
-                    ..writeln('\uBD84\uC704\uAE30: ${analysis.toneReport.overallMood}')
-                    ..writeln()
-                    ..writeln('#\uAC10\uB3C4 #\uC0AC\uC9C4\uBD84\uC11D #AI\uCF54\uCE6D');
-                  SharePlus.instance.share(
-                    ShareParams(text: summary.toString()),
-                  );
-                },
-              ),
-              const SizedBox(width: 4),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // 사용자가 만든 결과물이 주인공이다. 원본은 아래 구도
-                  // 분석에서만 쓴다.
-                  if (heroPath != null)
-                    Image.file(
-                      File(heroPath),
-                      fit: BoxFit.cover,
-                    ),
-                  // Gradient overlay
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.7),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 24,
-                    left: 16,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          analysis.toneReport.styleCategory,
-                          style: context.textTheme.displaySmall
-                              ?.copyWith(color: Colors.white),
+                const SizedBox(height: 10),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (score != null) ...[
+                        Expanded(
+                          child: _ScoreCard(score: score, before: scoreBefore),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          analysis.toneReport.overallMood,
-                          style: AppTypography.caption.copyWith(
-                            color: Colors.white.withValues(alpha: 0.85),
-                          ),
-                        ),
+                        const SizedBox(width: 10),
                       ],
-                    ),
+                      Expanded(
+                        child: _StyleSummaryCard(
+                          style: analysis.toneReport.styleCategory,
+                          mood: analysis.toneReport.overallMood,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ]),
             ),
           ),
 
@@ -264,6 +242,125 @@ class _HarmonyCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 라임 카드 — 피드 어울림 점수.
+class _ScoreCard extends StatelessWidget {
+  final int score;
+  final int? before;
+
+  const _ScoreCard({required this.score, this.before});
+
+  @override
+  Widget build(BuildContext context) {
+    final delta = before == null ? null : score - before!;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.highlight,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '피드 어울림',
+            style: AppTypography.badge.copyWith(fontSize: 13, color: AppColors.ink),
+          ),
+          const SizedBox(height: 26),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '$score',
+                style: AppTypography.number.copyWith(
+                  fontSize: 56,
+                  letterSpacing: -2.5,
+                  color: AppColors.ink,
+                ),
+              ),
+              if (delta != null && delta != 0) ...[
+                const SizedBox(width: 6),
+                Text(
+                  delta > 0 ? '+$delta' : '$delta',
+                  style: AppTypography.number.copyWith(
+                    fontSize: 15,
+                    letterSpacing: 0,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (before != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              '보정 전 $before',
+              style: AppTypography.meta.copyWith(fontSize: 12, color: AppColors.ink),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 흰 카드 — 스타일과 분위기.
+class _StyleSummaryCard extends StatelessWidget {
+  final String style;
+  final String mood;
+
+  const _StyleSummaryCard({required this.style, required this.mood});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: context.instaSurface,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '스타일',
+            style: AppTypography.badge.copyWith(
+              fontSize: 13,
+              color: context.instaSecondary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                style,
+                style: AppTypography.sectionTitle.copyWith(
+                  fontSize: 19,
+                  color: context.instaPrimaryText,
+                ),
+              ),
+              if (mood.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  mood,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.secondary.copyWith(
+                    fontSize: 12,
+                    color: context.instaSecondary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }

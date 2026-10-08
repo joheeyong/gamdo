@@ -64,8 +64,8 @@ class SettingsScreen extends ConsumerWidget {
             title: context.l10n.darkMode,
             trailing: Switch.adaptive(
               value: isDarkMode,
-              activeThumbColor: Colors.white,
-              activeTrackColor: AppColors.primary,
+              activeThumbColor: AppColors.ink,
+              activeTrackColor: AppColors.highlight,
               onChanged: (_) {
                 ref.read(themeModeProvider.notifier).toggle();
                 showInstaToast(
@@ -115,8 +115,8 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'AI가 인물 사진에서 자동 추천',
             trailing: Switch.adaptive(
               value: isReshapeEnabled,
-              activeThumbColor: Colors.white,
-              activeTrackColor: AppColors.primary,
+              activeThumbColor: AppColors.ink,
+              activeTrackColor: AppColors.highlight,
               onChanged: (_) =>
                   ref.read(reshapeEnabledSettingProvider.notifier).toggle(),
             ),
@@ -128,8 +128,8 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: '잡티 제거·피부 결 정리',
             trailing: Switch.adaptive(
               value: isSkinRetouchEnabled,
-              activeThumbColor: Colors.white,
-              activeTrackColor: AppColors.primary,
+              activeThumbColor: AppColors.ink,
+              activeTrackColor: AppColors.highlight,
               onChanged: (_) =>
                   ref.read(skinRetouchEnabledSettingProvider.notifier).toggle(),
             ),
@@ -1096,8 +1096,12 @@ class _InstagramRow extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
+          // 인스타그램 계정 연결 버튼은 앱 테마가 아니라 인스타그램 그라디언트를 쓴다.
+          // 계정 섹션 안의 작은 알약 버튼이라 화면 폭을 채우지 않는다.
           InstagramGradientButton(
             height: 40,
+            expand: false,
+            gradient: AppColors.instagramGradient,
             isLoading: auth.isLoading,
             onPressed: () async {
               final success =
@@ -1117,13 +1121,20 @@ class _InstagramRow extends ConsumerWidget {
                     icon: Icons.check_circle_outline);
               }
             },
-            child: const Text(
-              'Instagram 연결하기',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.camera_alt_outlined, color: Colors.white, size: 16),
+                SizedBox(width: 6),
+                Text(
+                  'Instagram 연결하기',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
           ),
           if (auth.error != null) ...[

@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 
-/// 감도 공통 UI 요소 모음 ('필름 노트' 스타일).
+/// 감도 공통 UI 요소 모음 ('벤토' 스타일).
 ///
 /// Material 기본 위젯(SnackBar / AlertDialog / Chip / ListTile)은
-/// 그림자·물결·체크마크가 많아 종이 노트 같은 화면 결과 어긋난다.
-/// 이 파일의 요소들은 그림자 없이 헤어라인과 종이/먹색 대비로 구성한다.
+/// 그림자·물결·체크마크가 많아 벤토 카드 화면과 결이 어긋난다.
+/// 이 파일의 요소들은 그림자 없이 큰 라운드와 회백색/먹색 대비로 구성한다.
 /// (클래스 이름의 Insta 접두어는 예전 이름이 남은 것이다.)
 
 // ── 색 유틸 ──
@@ -15,7 +15,7 @@ import '../theme/app_typography.dart';
 extension InstaThemeX on BuildContext {
   bool get _isDark => Theme.of(this).brightness == Brightness.dark;
 
-  /// 보조 텍스트(따뜻한 회갈색).
+  /// 보조 텍스트(중간 회색).
   Color get instaSecondary =>
       _isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
 
@@ -34,7 +34,7 @@ extension InstaThemeX on BuildContext {
 
 // ── 그래디언트 텍스트/아이콘 ──
 
-/// 앰버 두 톤으로 마스킹한 텍스트 (워드마크·강조).
+/// 올리브 강조색으로 마스킹한 텍스트.
 class GradientText extends StatelessWidget {
   final String text;
   final TextStyle? style;
@@ -59,7 +59,7 @@ class GradientText extends StatelessWidget {
   }
 }
 
-/// 앰버 두 톤으로 마스킹한 아이콘.
+/// 올리브 강조색으로 마스킹한 아이콘.
 class GradientIcon extends StatelessWidget {
   final IconData icon;
   final double size;
@@ -255,7 +255,7 @@ class InstaSettingRow extends StatelessWidget {
 
 // ── 토스트 ──
 
-/// 토스트(따뜻한 먹색 알약, 하단 부유).
+/// 토스트(먹색 알약, 하단 부유).
 ///
 /// Material SnackBar의 기본 모양 대신 사용한다.
 void showInstaToast(
@@ -292,13 +292,13 @@ void showInstaToast(
           ],
         ),
         backgroundColor:
-            isError ? AppColors.error : AppColors.floatingDark,
+            isError ? AppColors.error : AppColors.ink,
         behavior: SnackBarBehavior.floating,
         elevation: 0,
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(18),
         ),
         duration: Duration(seconds: isError ? 4 : 2),
       ),
@@ -310,7 +310,7 @@ void showInstaToast(
 /// 확인 다이얼로그.
 ///
 /// 가운데 정렬 제목/본문 + 헤어라인으로 나뉜 버튼 두 개.
-/// 파괴적 동작은 벽돌색 볼드로 표시한다.
+/// 파괴적 동작은 빨간 볼드로 표시한다.
 Future<bool> showInstaConfirm(
   BuildContext context, {
   required String title,
@@ -326,7 +326,7 @@ Future<bool> showInstaConfirm(
         backgroundColor: ctx.instaSurface,
         insetPadding: const EdgeInsets.symmetric(horizontal: 48),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -449,7 +449,7 @@ Future<void> showInstaSheet(
     context: context,
     backgroundColor: context.instaSurface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
     builder: (ctx) {
       return SafeArea(
@@ -559,7 +559,7 @@ class InstaStat extends StatelessWidget {
 
 // ── 보조 버튼 ──
 
-/// '프로필 편집' 류 보조 버튼 (옅은 종이색 채움).
+/// '프로필 편집' 류 보조 버튼 (옅은 회색 알약).
 class InstaSecondaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -580,13 +580,13 @@ class InstaSecondaryButton extends StatelessWidget {
     final fg = foreground ?? context.instaPrimaryText;
 
     return SizedBox(
-      height: 34,
+      height: 40,
       child: Material(
         color: isDark ? AppColors.secondaryFillDark : AppColors.secondaryFillLight,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           child: Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,

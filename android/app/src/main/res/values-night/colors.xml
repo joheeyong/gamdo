@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 실행 화면 바탕: 암실 먹색 (AppColors.backgroundDark) -->
-    <color name="gamdo_launch_background">#16130F</color>
+    <!-- 실행 화면 바탕: 벤토 먹색 (AppColors.backgroundDark) -->
+    <color name="gamdo_launch_background">#0F0F10</color>
 </resources>

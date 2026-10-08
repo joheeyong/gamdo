@@ -44,13 +44,15 @@ class InstagramLoginScreen extends ConsumerWidget {
               ),
               const Spacer(),
               // Instagram icon with gradient ring
+              // 인스타그램 연결 화면은 인스타그램 브랜드 색을 그대로 쓴다
               InstagramGradientAvatar(
                 size: 100,
                 borderWidth: 3,
+                gradient: AppColors.instagramRingGradient,
                 child: const Icon(
                   Icons.camera_alt_outlined,
                   size: 40,
-                  color: AppColors.primary,
+                  color: Color(0xFFE1306C),
                 ),
               ),
               const SizedBox(height: 32),
@@ -68,6 +70,7 @@ class InstagramLoginScreen extends ConsumerWidget {
               const SizedBox(height: 48),
               // Login button
               InstagramGradientButton(
+                gradient: AppColors.instagramGradient,
                 isLoading: auth.isLoading,
                 onPressed: () => _onLogin(context, ref),
                 child: const Row(
