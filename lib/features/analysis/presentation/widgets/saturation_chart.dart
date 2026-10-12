@@ -156,10 +156,16 @@ class _GaugeItem extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: context.textTheme.titleSmall,
+            // 좁은 칸·큰 글자 설정에서 라벨이 퍼센트를 밀어내지 않게 줄인다
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.textTheme.titleSmall,
+              ),
             ),
+            const SizedBox(width: 4),
             Text(
               '${(value * 100).toInt()}%',
               style: context.textTheme.titleSmall?.copyWith(

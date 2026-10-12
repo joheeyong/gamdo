@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -14,6 +15,7 @@ import '../widgets/color_palette_view.dart';
 import '../widgets/color_temperature_gauge.dart';
 import '../widgets/saturation_chart.dart';
 import '../widgets/composition_overlay.dart';
+import '../widgets/photo_viewer.dart';
 import '../widgets/tone_report_card.dart';
 
 class AnalysisResultScreen extends StatelessWidget {
@@ -59,7 +61,6 @@ class AnalysisResultScreen extends StatelessWidget {
       );
     }
 
-    final heroPath = transformedImagePath ?? imagePath;
     // 서버가 대표 사진과 견줘 잰 피드 어울림(0~100). 대표 사진이 없던 분석이나
     // 예전 기록에는 없다 — 그때는 점수 카드를 빼고 스타일 카드만 넓게 둔다.
     final score = (analysisMap['feedCompatibility'] as num?)?.round();
@@ -102,19 +103,14 @@ class AnalysisResultScreen extends StatelessWidget {
       ),
       body: CustomScrollView(
         slivers: [
-          // 벤토: 큰 사진 카드 → 라임 점수 카드 + 스타일 카드
+          // 벤토: 보정 전·후 사진 카드 → 라임 점수 카드 + 스타일 카드
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: SizedBox(
-                    height: 300,
-                    child: heroPath != null
-                        ? Image.file(File(heroPath), fit: BoxFit.cover)
-                        : ColoredBox(color: context.instaDivider),
-                  ),
+                _BeforeAfterCards(
+                  beforePath: imagePath,
+                  afterPath: transformedImagePath,
                 ),
                 const SizedBox(height: 10),
                 IntrinsicHeight(
@@ -361,6 +357,200 @@ class _StyleSummaryCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 보정 전·후 사진을 한 장 크기의 카드로 넘겨 본다.
+///
+/// 보정 후가 먼저 보이고, 오른쪽으로 넘기면(이전 장) 보정 전이 나온다.
+/// 수평 맞추기·크롭이 들어간 결과는 원본과 프레임이 달라, 한 장에 겹쳐 놓고
+/// 경계선을 끄는 비교는 위치가 어긋난다. 그래서 두 장을 따로 넘겨 보고,
+/// 누르면 전체 화면 뷰어(확대·전후 전환·길게 눌러 원본)를 그 사진으로 연다.
+/// 보정 후 사진이 없는 예전 기록은 원본 한 장만 보여 준다.
+class _BeforeAfterCards extends StatefulWidget {
+  final String? beforePath;
+  final String? afterPath;
+
+  const _BeforeAfterCards({required this.beforePath, required this.afterPath});
+
+  @override
+  State<_BeforeAfterCards> createState() => _BeforeAfterCardsState();
+}
+
+class _BeforeAfterCardsState extends State<_BeforeAfterCards> {
+  static const double _height = 420;
+
+  late final bool _hasBefore = _exists(widget.beforePath);
+  late final bool _hasAfter = _exists(widget.afterPath);
+  // 0 = 보정 전, 1 = 보정 후. 보정 후가 있으면 그 장에서 시작한다.
+  late int _page = _hasAfter ? 1 : 0;
+  late final PageController _controller = PageController(initialPage: _page);
+
+  static bool _exists(String? path) => path != null && File(path).existsSync();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _open(int index) async {
+    final before = widget.beforePath;
+    if (!_hasBefore) return;
+    Uint8List? afterBytes;
+    if (_hasAfter) {
+      try {
+        afterBytes = await File(widget.afterPath!).readAsBytes();
+      } catch (_) {
+        afterBytes = null;
+      }
+    }
+    if (!mounted) return;
+    await PhotoViewerScreen.open(
+      context,
+      originalImage: File(before!),
+      transformedBytes: afterBytes,
+      initialIndex: afterBytes == null ? 0 : index,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_hasAfter) {
+      return _PhotoCard(
+        path: _hasBefore ? widget.beforePath : null,
+        label: '원본',
+        highlight: false,
+        height: _height,
+        onTap: _hasBefore ? () => _open(0) : null,
+      );
+    }
+    final pages = [
+      _PhotoCard(
+        path: _hasBefore ? widget.beforePath : null,
+        label: '보정 전',
+        highlight: false,
+        height: _height,
+        onTap: _hasBefore ? () => _open(0) : null,
+      ),
+      _PhotoCard(
+        path: widget.afterPath,
+        label: '보정 후',
+        highlight: true,
+        height: _height,
+        onTap: _hasBefore ? () => _open(1) : null,
+      ),
+    ];
+    return Column(
+      children: [
+        SizedBox(
+          height: _height,
+          child: PageView(
+            controller: _controller,
+            onPageChanged: (i) => setState(() => _page = i),
+            children: pages,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Semantics(
+          label: _page == 1
+              ? '보정 후 사진, 2장 중 2번째'
+              : '보정 전 사진, 2장 중 1번째',
+          excludeSemantics: true,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < pages.length; i++)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: _page == i ? 18 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _page == i ? context.instaPrimaryText : context.instaDivider,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PhotoCard extends StatelessWidget {
+  final String? path;
+  final String label;
+  final bool highlight;
+  final double height;
+  final VoidCallback? onTap;
+
+  const _PhotoCard({
+    required this.path,
+    required this.label,
+    required this.highlight,
+    required this.height,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: onTap != null,
+      label: '$label 사진${onTap != null ? ', 눌러서 크게 보기' : ''}',
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: SizedBox(
+            height: height,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (path != null)
+                  Image.file(File(path!), fit: BoxFit.cover)
+                else
+                  ColoredBox(color: context.instaDivider),
+                Positioned(
+                  left: 12,
+                  top: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: highlight
+                          ? AppColors.highlight
+                          : Colors.white.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      label,
+                      style: AppTypography.badge.copyWith(color: AppColors.ink),
+                    ),
+                  ),
+                ),
+                if (onTap != null)
+                  Positioned(
+                    right: 10,
+                    bottom: 10,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.open_in_full_rounded,
+                          size: 16, color: Colors.white),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
