@@ -56,9 +56,6 @@ class InstagramGradientButton extends StatelessWidget {
   /// 버튼 바탕. 기본은 앱 강조색, 인스타그램 연결 버튼은 [AppColors.instagramGradient].
   final Gradient gradient;
 
-  /// true면 가로를 가득 채우고, false면 내용 폭만큼만 차지하는 작은 알약이 된다.
-  final bool expand;
-
   const InstagramGradientButton({
     super.key,
     required this.onPressed,
@@ -67,13 +64,12 @@ class InstagramGradientButton extends StatelessWidget {
     this.height = 48,
     this.borderRadius = 999,
     this.gradient = AppColors.brandGradient,
-    this.expand = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: expand ? double.infinity : null,
+      width: double.infinity,
       height: height,
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -87,9 +83,7 @@ class InstagramGradientButton extends StatelessWidget {
             shadowColor: Colors.transparent,
             disabledBackgroundColor: Colors.transparent,
             // 높이가 고정이라 테마의 위아래 여백을 쓰면 글자가 잘린다
-            padding: EdgeInsets.symmetric(horizontal: expand ? 16 : 18),
-            minimumSize: Size(0, height),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
           ),
           child: isLoading
               ? const SizedBox(

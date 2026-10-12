@@ -1082,69 +1082,122 @@ class _InstagramRow extends ConsumerWidget {
       );
     }
 
+    Future<void> connect() async {
+      final success =
+          await ref.read(instagramAuthProvider.notifier).login();
+      if (success && context.mounted) {
+        final authState = ref.read(instagramAuthProvider);
+        if (authState.accessToken != null &&
+            authState.userId != null) {
+          ref
+              .read(styleAnalysisPipelineProvider.notifier)
+              .analyzeInstagramProfile(
+                accessToken: authState.accessToken!,
+                userId: authState.userId!,
+              );
+        }
+        showInstaToast(context, 'Instagram 계정이 연결되었습니다',
+            icon: Icons.check_circle_outline);
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             '인스타그램 계정을 연결하면 게시글을 분석하여\n스타일 프로필을 자동으로 생성합니다.',
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
               color: context.instaSecondary,
               height: 1.5,
             ),
           ),
-          const SizedBox(height: 12),
-          // 인스타그램 계정 연결 버튼은 앱 테마가 아니라 인스타그램 그라디언트를 쓴다.
-          // 계정 섹션 안의 작은 알약 버튼이라 화면 폭을 채우지 않는다.
-          InstagramGradientButton(
-            height: 40,
-            expand: false,
-            gradient: AppColors.instagramGradient,
-            isLoading: auth.isLoading,
-            onPressed: () async {
-              final success =
-                  await ref.read(instagramAuthProvider.notifier).login();
-              if (success && context.mounted) {
-                final authState = ref.read(instagramAuthProvider);
-                if (authState.accessToken != null &&
-                    authState.userId != null) {
-                  ref
-                      .read(styleAnalysisPipelineProvider.notifier)
-                      .analyzeInstagramProfile(
-                        accessToken: authState.accessToken!,
-                        userId: authState.userId!,
-                      );
-                }
-                showInstaToast(context, 'Instagram 계정이 연결되었습니다',
-                    icon: Icons.check_circle_outline);
-              }
-            },
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.camera_alt_outlined, color: Colors.white, size: 16),
-                SizedBox(width: 6),
-                Text(
-                  'Instagram 연결하기',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 16),
+          // 인스타그램 계정 연결 — 가운데 원형 버튼 + 아래 라벨.
+          // 앱 테마가 아니라 인스타그램 그라디언트를 쓴다.
+          Center(
+            child: _InstagramConnectCircle(
+              isLoading: auth.isLoading,
+              onTap: connect,
             ),
           ),
           if (auth.error != null) ...[
             const SizedBox(height: 8),
             Text(
               auth.error!,
+              textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.error, fontSize: 12),
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// 인스타그램 연결 원형 버튼.
+///
+/// 인스타그램 그라디언트의 완전한 원 안에 카메라 아이콘을 두고, 원 아래에
+/// 'Instagram 연결하기' 라벨을 둔다. 원과 라벨 모두 누를 수 있다.
+class _InstagramConnectCircle extends StatelessWidget {
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _InstagramConnectCircle({required this.isLoading, required this.onTap});
+
+  static const double _size = 64;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Instagram 연결하기',
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: isLoading ? null : onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: _size,
+                height: _size,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppColors.instagramGradient,
+                ),
+                alignment: Alignment.center,
+                child: isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.camera_alt_outlined,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Instagram 연결하기',
+                style: AppTypography.badge.copyWith(
+                  fontSize: 13,
+                  color: context.instaPrimaryText,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

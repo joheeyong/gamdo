@@ -74,6 +74,7 @@ dev_dependencies:
   json_serializable: any
   riverpod_generator: any
   drift_dev: any
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -112,3 +113,18 @@ flutter:
           weight: 600
         - asset: assets/fonts/Geist-Bold.ttf
           weight: 700
+
+# 앱 아이콘 — C '조리개'. 원본은 assets/icon/*.svg, 바꾼 뒤
+#   rsvg-convert -w 1024 -h 1024 assets/icon/<이름>.svg -o assets/icon/<이름>.png
+#   dart run flutter_launcher_icons
+#   git checkout -- ios/Runner.xcodeproj/project.pbxproj
+# 마지막 줄: 이 도구(0.14.4)가 iOS 빌드 설정 ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS를
+# 'AppIcon'으로 잘못 덮어쓰므로 되돌린다.
+flutter_launcher_icons:
+  image_path: "assets/icon/icon.png"
+  android: "ic_launcher"
+  adaptive_icon_background: "#111111"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  adaptive_icon_monochrome: "assets/icon/icon_monochrome.png"
+  ios: true
+  remove_alpha_ios: true
