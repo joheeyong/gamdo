@@ -363,6 +363,7 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
                         transformState.hasCropSuggestion)
                       _CropSuggestionRow(
                         applied: transformState.cropSuggestionApplied,
+                        reason: transformState.cropReason,
                         busy: transformState.status ==
                                 TransformStatus.applyingManual ||
                             transformState.status == TransformStatus.saving,
@@ -370,6 +371,11 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
                             .read(transformProvider.notifier)
                             .toggleSuggestedCrop(_imageFile),
                       ),
+
+                    // ── 2-2. 인스타그램 비율에 맞춰 자동으로 자른 경우 그 이유 ──
+                    if (transformState.transformedImageBytes != null &&
+                        transformState.ratioReason != null)
+                      _CropReasonNote(text: transformState.ratioReason!),
 
                     // ── 3. 적용된 변형 요약 ──
                     _AppliedTransformsSummary(
@@ -1135,23 +1141,22 @@ class _ApplyingSpinner extends StatelessWidget {
   }
 }
 
-/// 결과 공유 버튼.
-///
-/// 인스타그램이 있으면 스토리·피드로 직행하는 버튼 두 개를, 없으면
-/// 갤러리 저장 버튼 하나를 보여 준다. 누를 수 없는 버튼은 내보이지 않는다.
 /// AI가 제안한 구도로 자르기 / 원래 구도로 되돌리기.
 ///
-/// 크롭은 사용자가 잡은 구도를 바꾸는 편집이라 자동으로 적용하지 않고
-/// 여기서 고르게 한다. 켠 상태는 기록에도 남아 다시 열거나 저장할 때 같다.
+/// 크롭은 사용자가 잡은 구도를 바꾸는 편집이라 여기서 되돌릴 수 있게 한다.
+/// 켠 상태는 기록에도 남아 다시 열거나 저장할 때 같다. [reason]이 있으면
+/// 왜 자르는지(자르자고 하는지)를 한 줄 덧붙인다.
 class _CropSuggestionRow extends StatelessWidget {
   final bool applied;
   final bool busy;
+  final String? reason;
   final VoidCallback onToggle;
 
   const _CropSuggestionRow({
     required this.applied,
     required this.busy,
     required this.onToggle,
+    this.reason,
   });
 
   @override
@@ -1163,11 +1168,26 @@ class _CropSuggestionRow extends StatelessWidget {
           Icon(Icons.crop_outlined, size: 16, color: context.instaSecondary),
           const SizedBox(width: 6),
           Expanded(
-            child: Text(
-              applied
-                  ? '\uCD94\uCC9C \uAD6C\uB3C4\uB85C \uC790\uB978 \uC0AC\uC9C4\uC774\uC5D0\uC694'
-                  : '\uCD94\uCC9C \uAD6C\uB3C4\uAC00 \uC788\uC5B4\uC694',
-              style: TextStyle(fontSize: 13, color: context.instaSecondary),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  applied ? '추천 구도로 자른 사진이에요' : '추천 구도가 있어요',
+                  style: TextStyle(fontSize: 13, color: context.instaSecondary),
+                ),
+                if (reason != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '이유: $reason',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: context.instaPrimaryText,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           InstaPill(
@@ -1184,6 +1204,41 @@ class _CropSuggestionRow extends StatelessWidget {
   }
 }
 
+/// 서버가 규칙에 따라 자동으로 자른 경우(인스타그램 비율 맞춤) 그 이유.
+class _CropReasonNote extends StatelessWidget {
+  final String text;
+
+  const _CropReasonNote({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(Icons.aspect_ratio_outlined,
+                size: 16, color: context.instaSecondary),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 13, color: context.instaSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 결과 공유 버튼.
+///
+/// 인스타그램이 있으면 스토리·피드로 직행하는 버튼 두 개를, 없으면
+/// 갤러리 저장 버튼 하나를 보여 준다. 누를 수 없는 버튼은 내보이지 않는다.
 class _ShareRow extends StatelessWidget {
   final bool busy;
   final bool instagramInstalled;

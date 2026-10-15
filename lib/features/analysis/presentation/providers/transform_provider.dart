@@ -138,6 +138,15 @@ class TransformState {
   /// 사용자가 '추천 구도로 자르기'를 켜 두었는지.
   bool get cropSuggestionApplied => autoEdits?['apply_suggested_crop'] == true;
 
+  /// AI가 크롭(또는 비율)을 제안한 이유. 서버가 정리해 둔 한 줄 문장이다.
+  String? get cropReason => _nonEmpty(autoEdits?['crop_reason']);
+
+  /// 인스타그램이 받지 않는 비율이라 서버가 자동으로 맞췄을 때 그 이유.
+  String? get ratioReason => _nonEmpty(autoEdits?['ratio_reason']);
+
+  static String? _nonEmpty(Object? v) =>
+      v is String && v.trim().isNotEmpty ? v.trim() : null;
+
   /// 이 상태(변형 결과)가 [imagePath] 사진의 것인지.
   ///
   /// provider가 전역이라, 다른 사진의 결과가 남아 있는 채로 변형 화면이
