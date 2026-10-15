@@ -14,6 +14,8 @@ import '../../../analysis/presentation/analysis_provider.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/edit_style_picker.dart';
+import '../../../../core/utils/open_url.dart';
+import '../../../auth/data/instagram_constants.dart';
 
 /// 전체 분석 기록 — 프로필 헤더의 통계에 쓰인다.
 final _allAnalysesProvider = StreamProvider<List<AnalysisRecord>>((ref) {
@@ -157,6 +159,22 @@ class SettingsScreen extends ConsumerWidget {
                 Text(
                   'v1.0.0  ·  Powered by Claude Vision',
                   style: TextStyle(fontSize: 12, color: context.instaSecondary),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: () => openExternalUrl(
+                          context, InstagramConstants.privacyPolicyUrl),
+                      child: const Text('개인정보처리방침'),
+                    ),
+                    TextButton(
+                      onPressed: () => openExternalUrl(
+                          context, InstagramConstants.dataDeletionUrl),
+                      child: const Text('데이터 삭제 안내'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1069,7 +1087,8 @@ class _InstagramRow extends ConsumerWidget {
               final confirmed = await showInstaConfirm(
                 context,
                 title: 'Instagram 연결 해제',
-                message: '정말로 Instagram 계정 연결을 해제하시겠습니까?',
+                message: '연결을 해제하면 감도 서버와 클라우드에 저장된 '
+                    '인스타그램 데이터(대표 사진·스타일 프로필)도 함께 삭제됩니다.',
                 confirmLabel: '해제',
                 isDestructive: true,
               );

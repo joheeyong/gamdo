@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/services/firebase_service.dart';
 import '../../../../core/services/instagram_service.dart';
 import '../../../../core/services/session_service.dart';
 import '../../../../core/services/storage_service.dart';
@@ -113,7 +114,31 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> logout() async {
+    // 연결 해제는 데이터 삭제를 겸한다 (Meta 플랫폼 정책). 서버의 대표 사진과
+    // Firebase의 스타일 프로필·피드백을 먼저 지우고, 그다음 로그인 정보를 지운다.
+    // 세션·Firebase 로그인이 있어야 지울 수 있으므로 순서가 중요하다.
+    // 삭제가 실패해도 연결 해제는 진행한다 — 서버 쪽은 Meta의 연결 해제·데이터 삭제
+    // 콜백으로도 지워진다.
+    final userId = await _storage.getInstagramUserId();
+    await _deleteServerData();
+    if (userId != null && userId.isNotEmpty) {
+      try {
+        await FirebaseService().deleteStyleProfile(userId);
+      } catch (e) {
+        developer.log('Firebase data delete failed: $e', name: 'AuthRepository');
+      }
+    }
     await _storage.clearInstagram();
     await SessionService.signOutFirebase();
+  }
+
+  Future<void> _deleteServerData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final base = ApiConstants.resolveProxyUrl(prefs.getString('proxy_url'));
+      await _dio.delete('$base/api/me/data');
+    } catch (e) {
+      developer.log('Server data delete failed: $e', name: 'AuthRepository');
+    }
   }
 }

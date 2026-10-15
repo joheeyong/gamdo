@@ -10,6 +10,8 @@ import '../../../../core/widgets/insta_ui.dart';
 import '../../../../core/widgets/instagram_widgets.dart';
 import '../../../analysis/presentation/analysis_provider.dart';
 import '../../../../core/services/analytics_service.dart';
+import '../../../../core/utils/open_url.dart';
+import '../../data/instagram_constants.dart';
 
 class InstagramLoginScreen extends ConsumerWidget {
   const InstagramLoginScreen({super.key});
@@ -67,7 +69,33 @@ class InstagramLoginScreen extends ConsumerWidget {
                     ?.copyWith(color: context.instaSecondary),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 20),
+              // Instagram API with Instagram Login은 프로페셔널 계정만 로그인할 수 있다.
+              // 개인 계정으로 시도한 사람(심사자 포함)이 고장으로 오해하지 않게 미리 알린다.
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: context.instaSurface,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 18, color: context.instaSecondary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '\uBE44\uC988\uB2C8\uC2A4\u00B7\uD06C\uB9AC\uC5D0\uC774\uD130 \uACC4\uC815\uB9CC \uC5F0\uACB0\uD560 \uC218 \uC788\uC5B4\uC694. '
+                        '\uAC1C\uC778 \uACC4\uC815\uC740 \uC778\uC2A4\uD0C0\uADF8\uB7A8 \uC571\uC758 \uC124\uC815 > \uACC4\uC815 \uC720\uD615 \uBC0F \uB3C4\uAD6C\uC5D0\uC11C \uBB34\uB8CC\uB85C \uC804\uD658\uD560 \uC218 \uC788\uC5B4\uC694.',
+                        style: context.textTheme.bodySmall?.copyWith(
+                          color: context.instaSecondary,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
               // Login button
               InstagramGradientButton(
                 gradient: AppColors.instagramGradient,
@@ -103,12 +131,22 @@ class InstagramLoginScreen extends ConsumerWidget {
               const Spacer(),
               // Footer info
               Padding(
-                padding: const EdgeInsets.only(bottom: 32),
-                child: Text(
-                  '\uC5F0\uACB0\uC740 \uC124\uC815\uC5D0\uC11C \uC5B8\uC81C\uB4E0 \uD574\uC81C\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
-                  style: context.textTheme.bodySmall
-                      ?.copyWith(color: context.instaSecondary),
-                  textAlign: TextAlign.center,
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Column(
+                  children: [
+                    Text(
+                      '\uC5F0\uACB0\uC740 \uC124\uC815\uC5D0\uC11C \uC5B8\uC81C\uB4E0 \uD574\uC81C\uD560 \uC218 \uC788\uACE0, '
+                      '\uD574\uC81C\uD558\uBA74 \uAC10\uB3C4\uC5D0 \uC800\uC7A5\uB41C \uC778\uC2A4\uD0C0\uADF8\uB7A8 \uB370\uC774\uD130\uB3C4 \uD568\uAED8 \uC0AD\uC81C\uB3FC\uC694.',
+                      style: context.textTheme.bodySmall
+                          ?.copyWith(color: context.instaSecondary),
+                      textAlign: TextAlign.center,
+                    ),
+                    TextButton(
+                      onPressed: () => openExternalUrl(
+                          context, InstagramConstants.privacyPolicyUrl),
+                      child: const Text('\uAC1C\uC778\uC815\uBCF4\uCC98\uB9AC\uBC29\uCE68'),
+                    ),
+                  ],
                 ),
               ),
             ],

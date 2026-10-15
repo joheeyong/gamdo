@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>감도 데이터 삭제 안내 · Data Deletion</title>
+<style>
+  body{margin:0;background:#F1F4F7;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.7}
+  main{max-width:720px;margin:0 auto;padding:32px 20px 64px}
+  h1{font-size:28px;letter-spacing:-0.5px} h2{font-size:18px;margin-top:32px}
+  .card{background:#fff;border-radius:20px;padding:20px 22px;margin-top:16px}
+  #status{display:none;background:#7DD3FC;border-radius:16px;padding:16px 20px;margin-top:20px;font-weight:600}
+  code{background:#F1F4F7;padding:2px 6px;border-radius:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>감도 데이터 삭제 안내</h1>
+  <div id="status">삭제 요청이 처리되었습니다. 확인 코드: <code id="code"></code></div>
+
+  <div class="card">
+    <p>감도는 인스타그램 연결로 받은 데이터를 다음 방법으로 언제든 삭제할 수 있습니다.
+    아래 어느 방법으로든 요청하면 감도 서버에 저장된 대표 사진과 클라우드(Firebase)에 저장된
+    스타일 프로필·보정 피드백이 삭제됩니다.</p>
+  </div>
+
+  <h2>1. 앱에서 삭제</h2>
+  <p>감도 앱 → 프로필(설정) → <b>Instagram 연결 해제</b>를 누르면 연결이 끊기면서 위 데이터가 함께 삭제됩니다.</p>
+
+  <h2>2. 인스타그램에서 삭제</h2>
+  <p>인스타그램 앱 → 설정 → <b>웹사이트 권한</b> → <b>앱 및 웹사이트</b>에서 감도를 삭제하면,
+  Meta가 감도에 알리고 감도는 해당 계정의 데이터를 삭제합니다.</p>
+
+  <h2>3. 이메일로 요청</h2>
+  <p><b>[연락처 이메일]</b>로 인스타그램 사용자 이름과 함께 삭제를 요청하면 7일 안에 처리하고 회신합니다.</p>
+
+  <h2>휴대폰에 남는 데이터</h2>
+  <p>보정한 사진과 분석 기록은 사용자의 휴대폰 안에만 저장됩니다. 앱을 삭제하면 함께 지워집니다.</p>
+
+  <hr style="border:none;border-top:1px solid #E4E4E0;margin:40px 0">
+  <h2>Data Deletion (English)</h2>
+  <p>You can delete the data Gamdo received through Instagram at any time: (1) in the app, Profile → <b>Disconnect Instagram</b>;
+  (2) in Instagram, Settings → Website permissions → Apps and websites → remove Gamdo; or (3) email <b>[contact email]</b>.
+  Any of these deletes the reference photos stored on Gamdo's server and the style profile and feedback stored in Firebase.
+  Edited photos and analysis history stay only on your phone and are removed when you uninstall the app.</p>
+</main>
+<script>
+  var code = new URLSearchParams(window.location.search).get("code");
+  if (code && /^[0-9a-f]{8,32}$/.test(code)) {
+    document.getElementById("code").textContent = code;
+    document.getElementById("status").style.display = "block";
+  }
+</script>
+</body>
+</html>

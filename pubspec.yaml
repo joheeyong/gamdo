@@ -64,6 +64,7 @@ dependencies:
   uuid: any
   path: any
   wakelock_plus: ^1.7.0
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>감도 개인정보처리방침 · Privacy Policy</title>
+<style>
+  body{margin:0;background:#F1F4F7;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.75}
+  main{max-width:760px;margin:0 auto;padding:32px 20px 64px}
+  h1{font-size:28px;letter-spacing:-0.5px} h2{font-size:18px;margin-top:36px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:16px;overflow:hidden;font-size:14px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E0;vertical-align:top}
+  th{background:#FAFAF8}
+  .muted{color:#6E6E6A;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <h1>감도 개인정보처리방침</h1>
+  <p class="muted">시행일: [시행일] · 운영자: [운영자 이름] · 문의: [연락처 이메일]</p>
+
+  <p>감도(이하 "앱")는 사진의 색감·구도를 분석해 사용자의 인스타그램 피드 스타일에 맞게 보정해 주는 서비스입니다.
+  이 방침은 앱이 어떤 정보를 왜 처리하고, 어디에 얼마나 보관하며, 어떻게 삭제할 수 있는지 설명합니다.</p>
+
+  <h2>1. 처리하는 정보</h2>
+  <table>
+    <tr><th>정보</th><th>언제</th><th>목적</th></tr>
+    <tr><td>보정을 요청한 사진</td><td>사용자가 사진을 분석할 때</td><td>색감·구도 분석과 보정 이미지 생성</td></tr>
+    <tr><td>인스타그램 사용자 ID, 사용자 이름</td><td>인스타그램을 연결할 때</td><td>계정 구분, 세션 발급</td></tr>
+    <tr><td>인스타그램 게시물 사진·캡션·게시 시각</td><td>인스타그램을 연결할 때(스타일 분석)</td><td>사용자의 피드 스타일(색감·분위기) 분석</td></tr>
+    <tr><td>보정 슬라이더 조정값</td><td>보정 결과를 저장할 때</td><td>사용자 취향에 맞게 다음 보정을 개인화</td></tr>
+    <tr><td>앱 사용 이벤트(화면 조회, 분석 성공·실패 등)</td><td>앱을 사용할 때</td><td>서비스 품질 개선. 인스타그램 ID·사진은 포함하지 않음</td></tr>
+    <tr><td>앱 오류 정보(오류 내용, 기기 모델, OS·앱 버전)</td><td>앱에 오류가 나거나 비정상 종료될 때</td><td>오류 수정과 안정성 개선. 인스타그램 ID·사진은 포함하지 않음</td></tr>
+  </table>
+  <p>인스타그램 연결은 선택 사항이며, 연결하지 않아도 사진 보정 기능을 쓸 수 있습니다.
+  앱은 인스타그램에 게시하거나 다른 사람의 계정 정보를 가져오지 않습니다.</p>
+
+  <h2>2. 보관 위치와 기간</h2>
+  <table>
+    <tr><th>정보</th><th>보관 위치</th><th>기간</th></tr>
+    <tr><td>분석을 위해 보낸 사진</td><td>감도 분석 서버(처리 중에만)</td><td>분석이 끝나면 저장하지 않음. 같은 요청의 재시도를 위해 분석 결과만 최대 30분 메모리에 둠</td></tr>
+    <tr><td>대표 사진(피드에서 고른 최대 3장)</td><td>감도 분석 서버</td><td>인스타그램 연결 해제 또는 삭제 요청 시까지</td></tr>
+    <tr><td>스타일 프로필, 보정 조정값</td><td>Google Firebase(Realtime Database)</td><td>인스타그램 연결 해제 또는 삭제 요청 시까지</td></tr>
+    <tr><td>보정한 사진, 분석 기록</td><td>사용자의 휴대폰</td><td>사용자가 지우거나 앱을 삭제할 때까지</td></tr>
+    <tr><td>인스타그램 접근 토큰, 감도 세션</td><td>사용자 휴대폰의 보안 저장소</td><td>연결 해제 시 삭제</td></tr>
+  </table>
+
+  <h2>3. 외부에 제공·위탁하는 곳</h2>
+  <table>
+    <tr><th>받는 곳</th><th>제공하는 정보</th><th>목적</th></tr>
+    <tr><td>Anthropic, PBC (Claude)</td><td>분석할 사진, 대표 사진, 게시물 캡션</td><td>사진의 피사체·구도·분위기 분석(AI)</td></tr>
+    <tr><td>Google LLC (Firebase)</td><td>스타일 프로필, 보정 조정값, 앱 사용 이벤트, 앱 오류 정보</td><td>데이터 저장, 서비스 분석, 오류 수집(Crashlytics)</td></tr>
+    <tr><td>Meta Platforms, Inc. (Instagram API)</td><td>인스타그램 로그인 요청</td><td>계정 연결, 게시물 조회</td></tr>
+    <tr><td>[서버 호스팅 업체]</td><td>분석 서버로 오가는 요청</td><td>서버 운영·네트워크 연결</td></tr>
+  </table>
+  <p>위 목적 외에 정보를 판매하거나 광고에 쓰지 않습니다.</p>
+
+  <h2>4. 삭제와 사용자의 권리</h2>
+  <p>언제든 앱의 <b>Instagram 연결 해제</b>로 서버와 Firebase에 저장된 인스타그램 관련 데이터를 삭제할 수 있습니다.
+  인스타그램 앱의 "앱 및 웹사이트"에서 감도를 제거해도 같은 데이터가 삭제됩니다.
+  자세한 방법은 <a href="data-deletion.html">데이터 삭제 안내</a>를 참고하세요.
+  열람·정정·처리 정지 요청은 [연락처 이메일]로 보내 주시면 지체 없이 처리합니다.</p>
+
+  <h2>5. 아동</h2>
+  <p>앱은 만 14세 미만 아동을 대상으로 하지 않으며, 알고서 아동의 정보를 처리하지 않습니다.</p>
+
+  <h2>6. 보호 조치</h2>
+  <p>모든 통신은 HTTPS로 암호화합니다. 인스타그램 토큰은 휴대폰의 보안 저장소에 보관하고,
+  서버 비밀키는 서버에만 두며 앱에 넣지 않습니다.</p>
+
+  <h2>7. 변경</h2>
+  <p>이 방침이 바뀌면 시행 7일 전에 앱 또는 이 페이지에 알립니다.</p>
+
+  <hr style="border:none;border-top:1px solid #E4E4E0;margin:40px 0">
+  <h1 style="font-size:22px">Privacy Policy (English summary)</h1>
+  <p class="muted">Effective: [effective date] · Operator: [operator name] · Contact: [contact email]</p>
+  <p><b>What we process.</b> Photos you choose to analyze; if you connect Instagram (optional), your Instagram user ID and username,
+  and your posts' images, captions and timestamps to learn your feed style; slider adjustments you save; anonymous usage events, and crash reports (error details, device model, OS and app version)
+  (no Instagram IDs or photos).</p>
+  <p><b>Where and how long.</b> Photos sent for analysis are not stored after processing (results are cached in memory for up to 30 minutes).
+  Up to three reference photos from your feed are stored on Gamdo's server, and your style profile and adjustments in Google Firebase,
+  until you disconnect Instagram or request deletion. Edited photos and history stay on your phone.</p>
+  <p><b>Who receives data.</b> Anthropic (Claude) to analyze photos and captions; Google (Firebase) for storage, analytics and crash reporting;
+  Meta (Instagram API) for login and reading your posts; [server hosting provider] to run the server. We do not sell data or use it for ads.</p>
+  <p><b>Deletion.</b> Disconnect Instagram in the app, remove Gamdo under Instagram → Settings → Website permissions → Apps and websites,
+  or email [contact email]. See <a href="data-deletion.html">Data Deletion</a>.</p>
+</main>
+</body>
+</html>
