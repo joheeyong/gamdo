@@ -65,7 +65,7 @@ dependencies:
   path: any
   wakelock_plus: ^1.7.0
   url_launcher: ^6.3.3
-  url_launcher: ^6.3.3
+  firebase_crashlytics: ^5.4.0
 
 dev_dependencies:
   flutter_test:
