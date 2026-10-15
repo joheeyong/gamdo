@@ -65,6 +65,7 @@ dependencies:
   path: any
   wakelock_plus: ^1.7.0
   url_launcher: ^6.3.3
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
@@ -115,7 +116,7 @@ flutter:
         - asset: assets/fonts/Geist-Bold.ttf
           weight: 700
 
-# 앱 아이콘 — C '조리개'. 원본은 assets/icon/*.svg, 바꾼 뒤
+# 앱 아이콘 — C '조리개' (흰 바탕 위 하늘색). 원본은 assets/icon/*.svg, 바꾼 뒤
 #   rsvg-convert -w 1024 -h 1024 assets/icon/<이름>.svg -o assets/icon/<이름>.png
 #   dart run flutter_launcher_icons
 #   git checkout -- ios/Runner.xcodeproj/project.pbxproj
@@ -124,7 +125,7 @@ flutter:
 flutter_launcher_icons:
   image_path: "assets/icon/icon.png"
   android: "ic_launcher"
-  adaptive_icon_background: "#111111"
+  adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"
   adaptive_icon_monochrome: "assets/icon/icon_monochrome.png"
   ios: true

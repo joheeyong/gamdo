@@ -11,7 +11,7 @@ class InstagramGradientAvatar extends StatelessWidget {
   final double borderWidth;
   final Widget child;
 
-  /// 링 색. 기본은 앱의 라임 링, 인스타그램 연결 화면은 인스타그램 링.
+  /// 링 색. 기본은 앱의 하늘색 링, 인스타그램 연결 화면은 인스타그램 링.
   final Gradient gradient;
 
   const InstagramGradientAvatar({

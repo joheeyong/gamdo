@@ -34,7 +34,7 @@ extension InstaThemeX on BuildContext {
 
 // ── 그래디언트 텍스트/아이콘 ──
 
-/// 올리브 강조색으로 마스킹한 텍스트.
+/// 바다색 강조색으로 마스킹한 텍스트.
 class GradientText extends StatelessWidget {
   final String text;
   final TextStyle? style;
@@ -59,7 +59,7 @@ class GradientText extends StatelessWidget {
   }
 }
 
-/// 올리브 강조색으로 마스킹한 아이콘.
+/// 바다색 강조색으로 마스킹한 아이콘.
 class GradientIcon extends StatelessWidget {
   final IconData icon;
   final double size;

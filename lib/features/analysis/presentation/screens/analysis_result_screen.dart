@@ -103,7 +103,7 @@ class AnalysisResultScreen extends StatelessWidget {
       ),
       body: CustomScrollView(
         slivers: [
-          // 벤토: 보정 전·후 사진 카드 → 라임 점수 카드 + 스타일 카드
+          // 벤토: 보정 전·후 사진 카드 → 하늘색 점수 카드 + 스타일 카드
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             sliver: SliverList(
@@ -243,7 +243,7 @@ class _HarmonyCard extends StatelessWidget {
   }
 }
 
-/// 라임 카드 — 피드 어울림 점수.
+/// 하늘색 카드 — 피드 어울림 점수.
 class _ScoreCard extends StatelessWidget {
   final int score;
   final int? before;

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- 실행 화면 바탕: 벤토 회백색 (AppColors.backgroundLight) -->
-    <color name="gamdo_launch_background">#F2F2EF</color>
+    <color name="gamdo_launch_background">#F1F4F7</color>
     <!-- 적응형 앱 아이콘 바탕 (flutter_launcher_icons가 관리) -->
-    <color name="ic_launcher_background">#111111</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
 </resources>

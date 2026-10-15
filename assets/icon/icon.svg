@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
   <!-- 감도 앱 아이콘 C '조리개'. 모서리는 각 OS가 깎으므로 정사각형으로 둔다. -->
-  <rect width="180" height="180" fill="#111111"/>
-  <circle cx="90" cy="90" r="56" fill="#D4FF3F"/><g stroke="#111111" stroke-width="6" stroke-linecap="round" fill="none"><path d="M90.0 68.0L145.1 99.8 M109.1 79.0L109.1 142.7 M109.1 101.0L53.9 132.8 M90.0 112.0L34.9 80.2 M70.9 101.0L70.9 37.3 M70.9 79.0L126.1 47.2"/></g><circle cx="90" cy="90" r="56" fill="none" stroke="#111111" stroke-width="2"/><polygon points="90.0,68.0 109.1,79.0 109.1,101.0 90.0,112.0 70.9,101.0 70.9,79.0" fill="#111111"/>
+  <rect width="180" height="180" fill="#FFFFFF"/>
+  <circle cx="90" cy="90" r="56" fill="#7DD3FC"/><clipPath id="lens"><circle cx="90" cy="90" r="56"/></clipPath><g clip-path="url(#lens)" stroke="#111111" stroke-width="6" stroke-linecap="round" fill="none"><path d="M90.0 68.0L145.1 99.8 M109.1 79.0L109.1 142.7 M109.1 101.0L53.9 132.8 M90.0 112.0L34.9 80.2 M70.9 101.0L70.9 37.3 M70.9 79.0L126.1 47.2"/></g><circle cx="90" cy="90" r="56" fill="none" stroke="#111111" stroke-width="2"/><polygon points="90.0,68.0 109.1,79.0 109.1,101.0 90.0,112.0 70.9,101.0 70.9,79.0" fill="#111111"/>
 </svg>

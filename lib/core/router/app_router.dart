@@ -175,7 +175,7 @@ class _InstaNavShellState extends ConsumerState<_InstaNavShell> {
       },
       child: Scaffold(
         body: widget.child,
-        // 벤토 탭 바: 흰 알약 안에 탭 세 개 + 오른쪽 라임 분석 버튼
+        // 벤토 탭 바: 흰 알약 안에 탭 세 개 + 오른쪽 하늘색 분석 버튼
         bottomNavigationBar: _BentoTabBar(
           selected: idx,
           isConnected: isConnected,
@@ -196,7 +196,7 @@ class _InstaNavShellState extends ConsumerState<_InstaNavShell> {
 /// 벤토 하단 탭 바.
 ///
 /// 흰(다크: 짙은 회색) 알약 안에 홈·기록·프로필 세 탭을 두고, 선택된 탭은 먹색
-/// 원으로 채운다. 사진 분석(만들기)은 탭이 아니라 오른쪽의 라임 원 버튼이다.
+/// 원으로 채운다. 사진 분석(만들기)은 탭이 아니라 오른쪽의 하늘색 원 버튼이다.
 /// [selected]는 기존 탭 번호를 그대로 쓴다 (0 홈, 1 기록, 3 프로필).
 class _BentoTabBar extends StatelessWidget {
   final int selected;

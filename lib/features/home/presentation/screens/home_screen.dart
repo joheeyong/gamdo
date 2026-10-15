@@ -20,7 +20,7 @@ import '../providers/home_provider.dart';
 /// 홈 — 벤토 그리드.
 ///
 /// 회백색 바탕 위에 크기가 다른 카드를 짜 맞춘다.
-/// 맨 위 큰 카드는 최근 보정한 사진, 그 아래 라임 카드는 분석한 사진 수,
+/// 맨 위 큰 카드는 최근 보정한 사진, 그 아래 하늘색 카드는 분석한 사진 수,
 /// 흰 카드는 내 감도(스타일 프로필), 먹색 카드는 새 분석 버튼이다.
 /// 그 아래로 지난 기록을 둥근 사진 타일 두 열로 보여 준다.
 class HomeScreen extends ConsumerWidget {
@@ -301,7 +301,7 @@ class _EmptyHeroCard extends StatelessWidget {
   }
 }
 
-/// 라임 카드 — 분석한 사진 수.
+/// 하늘색 카드 — 분석한 사진 수.
 class _CountCard extends StatelessWidget {
   final int count;
   const _CountCard({required this.count});

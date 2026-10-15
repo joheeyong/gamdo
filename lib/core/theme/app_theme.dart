@@ -177,7 +177,7 @@ class AppTheme {
           color: AppColors.surfaceLight,
         ),
       ),
-      // 스위치: 켜면 라임 트랙 위 먹색 손잡이, 끄면 옅은 회색 트랙
+      // 스위치: 켜면 하늘색 트랙 위 먹색 손잡이, 끄면 옅은 회색 트랙
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
@@ -438,7 +438,7 @@ class AppTheme {
           color: AppColors.surfaceDark,
         ),
       ),
-      // 스위치: 켜면 라임 트랙 위 먹색 손잡이, 끄면 어두운 트랙
+      // 스위치: 켜면 하늘색 트랙 위 먹색 손잡이, 끄면 어두운 트랙
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
