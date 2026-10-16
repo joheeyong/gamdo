@@ -14,6 +14,7 @@ import 'package:gamdo/features/analysis/domain/entities/analysis_job_progress.da
 import 'package:gamdo/features/analysis/domain/repositories/analysis_repository.dart';
 import 'package:gamdo/features/analysis/domain/repositories/transform_repository.dart';
 import 'package:gamdo/features/analysis/presentation/providers/transform_provider.dart';
+import 'package:gamdo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 typedef _Result = ({
@@ -36,6 +37,13 @@ class _FakeImageService extends ImageService {
   Future<String> processPreviewImage(File originalFile) async => 'PREVIEW';
 }
 
+/// 로그인·로그아웃을 테스트에서 흉내 낸다.
+class _FakeAuthNotifier extends InstagramAuthNotifier {
+  void setUser(String? userId) => state = userId == null
+      ? const InstagramAuth()
+      : InstagramAuth(isConnected: true, userId: userId, accessToken: 't');
+}
+
 /// 호출마다 [next]가 돌려주는 Future를 결과로 쓴다.
 class _FakeAnalysisRepository implements AnalysisRepository {
   Future<_Result> Function(File imageFile, CancelToken? token) next =
@@ -43,6 +51,13 @@ class _FakeAnalysisRepository implements AnalysisRepository {
 
   /// 마지막 analyzeAndTransformRecord 호출이 받은 피부 보정 설정.
   bool? lastSkinRetouchEnabled;
+
+  /// 마지막 analyzeAndTransformRecord 호출이 받은 압축본 (다시 압축하지 않게).
+  ({File file, String base64})? lastProcessedImage;
+
+  /// fetchReferenceImages가 돌려줄 대표 사진.
+  List<String> referenceImages = [];
+  int referenceFetches = 0;
 
   /// 마지막 analyzeAndTransformRecord 호출이 받은 style_profile.
   Map<String, dynamic>? lastStyleProfile;
@@ -64,6 +79,7 @@ class _FakeAnalysisRepository implements AnalysisRepository {
   @override
   Future<AnalyzeRecordResult> analyzeAndTransformRecord({
     required File imageFile,
+    ({File file, String base64})? processedImage,
     Map<String, dynamic>? styleProfile,
     String userId = '',
     bool reshapeEnabled = false,
@@ -74,6 +90,7 @@ class _FakeAnalysisRepository implements AnalysisRepository {
   }) async {
     lastOnProgress = onProgress;
     lastSkinRetouchEnabled = skinRetouchEnabled;
+    lastProcessedImage = processedImage;
     lastStyleProfile = styleProfile;
     final r = await next(imageFile, cancelToken);
     return (
@@ -92,7 +109,10 @@ class _FakeAnalysisRepository implements AnalysisRepository {
       int recordId, Map<String, dynamic>? autoEdits) async {}
 
   @override
-  Future<List<String>> fetchReferenceImages(String userId) async => [];
+  Future<List<String>> fetchReferenceImages(String userId) async {
+    referenceFetches++;
+    return referenceImages;
+  }
 
   @override
   Future<Map<String, dynamic>> analyzeUser({
@@ -125,14 +145,6 @@ class _FakeTransformRepository implements TransformRepository {
     if (fail) throw Exception('network');
     return {'success': true, 'image_base64': base64Encode([9, 9, 9])};
   }
-
-  @override
-  Future<TransformResult> autoTransform({
-    required File imageFile,
-    required Map<String, dynamic> analysis,
-    Map<String, dynamic>? styleProfile,
-  }) =>
-      throw UnimplementedError();
 }
 
 _Result _result(String savedPath,
@@ -171,6 +183,7 @@ void main() {
       analysisRepositoryDIProvider.overrideWithValue(analysisRepo),
       transformRepositoryProvider.overrideWithValue(transformRepo),
       imageServiceProvider.overrideWithValue(imageService),
+      instagramAuthProvider.overrideWith(_FakeAuthNotifier.new),
     ]);
   });
 
@@ -239,6 +252,70 @@ void main() {
     expect(transformRepo.lastRegionParams, {
       'face': {'skin_smoothing': 0.0, 'blemish_removal': 0.0},
     });
+  });
+
+  test('분석에 쓴 압축본을 저장소에 그대로 넘긴다 (같은 사진을 두 번 압축하지 않는다)',
+      () async {
+    analysisRepo.next = (f, t) async => _result('/saved/a.jpg');
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+    expect(analysisRepo.lastProcessedImage?.base64, 'FULL');
+  });
+
+  test('얼굴/체형 보정이 꺼져 있으면(기본) 미리보기·저장 모두 체형 값을 0으로 보낸다',
+      () async {
+    analysisRepo.next = (f, t) async => _result(
+          '/saved/a.jpg',
+          params: {'brightness': 0.2, 'face_slim': 0.3, 'leg_stretch': 0.2},
+        );
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+
+    await notifier().applyManual(File('/picked/a.jpg'), state().params);
+    expect(transformRepo.lastParams!.faceSlim, 0.0);
+    expect(transformRepo.lastParams!.legStretch, 0.0);
+    expect(transformRepo.lastParams!.brightness, 0.2);
+
+    await notifier().renderForExport(File('/picked/a.jpg'));
+    expect(transformRepo.lastParams!.faceSlim, 0.0);
+    expect(transformRepo.lastParams!.legStretch, 0.0);
+  });
+
+  test('얼굴/체형 보정을 켜 두면 체형 값을 그대로 보낸다', () async {
+    SharedPreferences.setMockInitialValues({'reshape_enabled': true});
+    analysisRepo.next = (f, t) async =>
+        _result('/saved/a.jpg', params: {'face_slim': 0.3});
+    await notifier().analyzeAndTransform(File('/picked/a.jpg'));
+
+    await notifier().renderForExport(File('/picked/a.jpg'));
+    expect(transformRepo.lastParams!.faceSlim, 0.3);
+  });
+
+  test('로그아웃(계정 변경)하면 대표 사진·변형 결과를 비운다', () async {
+    final auth =
+        container.read(instagramAuthProvider.notifier) as _FakeAuthNotifier;
+    container.read(transformProvider); // listen 등록
+    auth.setUser('u1');
+    analysisRepo.referenceImages = [base64Encode([5])];
+    await notifier().loadReferenceImages();
+    expect(state().referenceImages, hasLength(1));
+
+    auth.setUser(null);
+    expect(state().referenceImages, isNull);
+    expect(state().status, TransformStatus.idle);
+  });
+
+  test('force면 이미 받은 대표 사진도 다시 받는다 (스타일 분석 완료 후)', () async {
+    final auth =
+        container.read(instagramAuthProvider.notifier) as _FakeAuthNotifier;
+    auth.setUser('u1');
+    analysisRepo.referenceImages = [base64Encode([5])];
+    await notifier().loadReferenceImages();
+    await notifier().loadReferenceImages();
+    expect(analysisRepo.referenceFetches, 1);
+
+    analysisRepo.referenceImages = [base64Encode([6]), base64Encode([7])];
+    await notifier().loadReferenceImages(force: true);
+    expect(analysisRepo.referenceFetches, 2);
+    expect(state().referenceImages, hasLength(2));
   });
 
   test('피부 보정이 켜져 있으면(기본) 분석에 true를 보내고 피부 값을 그대로 쓴다',

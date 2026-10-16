@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/providers/auth_provider.dart';
+import '../providers/auth_provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/insta_ui.dart';
 import '../../../../core/widgets/instagram_widgets.dart';
-import '../../../analysis/presentation/analysis_provider.dart';
+import '../../../analysis/presentation/providers/analysis_provider.dart';
 import '../../../../core/services/analytics_service.dart';
 import '../../../../core/utils/open_url.dart';
 import '../../data/instagram_constants.dart';

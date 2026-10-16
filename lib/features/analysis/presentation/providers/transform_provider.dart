@@ -10,9 +10,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../../core/network/api_exception.dart';
-import '../../../../core/providers/auth_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../settings/presentation/providers/settings_provider.dart';
-import '../../../../core/providers/style_profile_provider.dart';
 import '../../../../core/services/image_service.dart';
 import '../../di/analysis_providers.dart';
 import '../../domain/entities/analysis_job_progress.dart';
@@ -50,6 +49,18 @@ export '../../domain/entities/transform_params.dart';
     regionParams: region,
   );
 }
+
+/// 얼굴/체형 보정(얼굴 갸름·턱선·눈 확대·다리·어깨·허리)을 뺀 값.
+///
+/// 서버가 `reshape_enabled: false` 분석에서 하는 것과 같다.
+TransformParams withoutReshape(TransformParams params) => params.copyWith(
+      faceSlim: 0.0,
+      jawSharpen: 0.0,
+      eyeEnlarge: 0.0,
+      legStretch: 0.0,
+      shoulderWidth: 0.0,
+      waistSlim: 0.0,
+    );
 
 enum TransformStatus {
   idle,
@@ -129,8 +140,10 @@ class TransformState {
 
   /// 서버가 남긴 크롭 제안(autoEdits.suggested_crop / suggested_ratio)이 있는지.
   ///
-  /// 서버는 모델의 크롭을 자동으로 적용하지 않고 제안으로만 돌려준다 —
-  /// 사용자가 잡은 구도를 말없이 바꾸지 않기 위해서다.
+  /// 서버는 AI가 고른 크롭이 화면의 60% 이상을 남기면 자동으로 적용하고
+  /// (단, 85%를 넘게 남기는 크롭은 의미가 없어 버린다), 그보다 많이 잘라내는
+  /// 크롭은 적용하지 않고 이 제안으로만 돌려준다 — 구도를 크게 바꾸는 결정은
+  /// 사용자에게 맡긴다.
   bool get hasCropSuggestion =>
       autoEdits?['suggested_crop'] is Map ||
       autoEdits?['suggested_ratio'] is String;
@@ -213,7 +226,23 @@ class TransformNotifier extends Notifier<TransformState> {
   bool _bytesAreFullQuality = false;
 
   @override
-  TransformState build() => const TransformState();
+  TransformState build() {
+    // 계정이 바뀌거나 연결이 끊기면(로그아웃·토큰 만료) 이전 사용자의
+    // 대표 사진·변형 결과를 들고 있지 않는다. provider가 전역이라 직접 비운다.
+    ref.listen(
+      instagramAuthProvider.select((a) => a.userId),
+      (previous, next) {
+        if (previous == next) return;
+        _autoTransformCancelToken?.cancel('계정 변경');
+        _autoTransformCancelToken = null;
+        _manualCancelToken?.cancel('계정 변경');
+        _manualCancelToken = null;
+        _bytesAreFullQuality = false;
+        state = const TransformState();
+      },
+    );
+    return const TransformState();
+  }
 
   /// 진행 중인 자동 변형 요청을 취소한다.
   ///
@@ -235,7 +264,9 @@ class TransformNotifier extends Notifier<TransformState> {
     state = state.copyWith(params: params);
   }
 
-  Future<void> loadReferenceImages() async {
+  /// 사용자 대표 사진을 받아 둔다. 이미 받아 두었으면 [force]가 아닐 때
+  /// 다시 받지 않는다 (스타일 분석이 끝나면 대표 사진이 바뀌므로 force).
+  Future<void> loadReferenceImages({bool force = false}) async {
     try {
       String userId = '';
       try {
@@ -245,12 +276,16 @@ class TransformNotifier extends Notifier<TransformState> {
 
       if (userId.isEmpty) return;
 
-      if (state.referenceImages != null && state.referenceImages!.isNotEmpty) {
+      if (!force &&
+          state.referenceImages != null &&
+          state.referenceImages!.isNotEmpty) {
         return;
       }
 
       final repo = ref.read(analysisRepositoryDIProvider);
       final images = await repo.fetchReferenceImages(userId);
+      // 받는 사이 계정이 바뀌었으면 이전 사용자의 사진을 넣지 않는다
+      if (ref.read(instagramAuthProvider).userId != userId) return;
 
       if (images.isNotEmpty) {
         final decoded = images.map((b64) => base64Decode(b64)).toList();
@@ -288,9 +323,12 @@ class TransformNotifier extends Notifier<TransformState> {
       recordId: recordId,
     );
 
+    final imageService = ref.read(imageServiceProvider);
+    // 압축본은 저장소에도 그대로 넘겨 같은 사진을 두 번 압축하지 않는다.
+    // 끝나면(성공·실패 모두) 임시 압축 파일을 지운다.
+    ({File file, String base64})? fullProcessed;
     try {
       final repo = ref.read(analysisRepositoryDIProvider);
-      final imageService = ref.read(imageServiceProvider);
 
       String userId = '';
       try {
@@ -311,7 +349,7 @@ class TransformNotifier extends Notifier<TransformState> {
       AnalyticsService.instance.analysisStart(style: style.choice);
       started = true;
 
-      final fullProcessed = await imageService.processImage(imageFile);
+      fullProcessed = await imageService.processImage(imageFile);
       final previewBase64 = await imageService.processPreviewImage(imageFile);
       if (!_isCurrent(token)) return null;
 
@@ -326,6 +364,7 @@ class TransformNotifier extends Notifier<TransformState> {
 
       final result = await repo.analyzeAndTransformRecord(
         imageFile: imageFile,
+        processedImage: fullProcessed,
         styleProfile: styleProfile,
         userId: userId,
         reshapeEnabled: reshapeEnabled,
@@ -399,12 +438,9 @@ class TransformNotifier extends Notifier<TransformState> {
           elapsed: analyticsTimer.elapsed,
         );
       }
-      final msg = e.response?.statusCode != null
-          ? ApiException(message: e.message ?? '', statusCode: e.response?.statusCode).userMessage
-          : '인터넷 연결을 확인해 주세요';
       state = state.copyWith(
         status: TransformStatus.error,
-        errorMessage: msg,
+        errorMessage: ApiException.fromDio(e).userMessage,
       );
     } catch (e) {
       developer.log('analyzeAndTransform failed: $e', name: 'Transform');
@@ -420,6 +456,11 @@ class TransformNotifier extends Notifier<TransformState> {
         status: TransformStatus.error,
         errorMessage: msg,
       );
+    } finally {
+      final processed = fullProcessed;
+      if (processed != null) {
+        await imageService.deleteTempFile(processed.file);
+      }
     }
     return null;
   }
@@ -487,29 +528,17 @@ class TransformNotifier extends Notifier<TransformState> {
     try {
       final imageService = ref.read(imageServiceProvider);
       final fullProcessed = await imageService.processImage(imageFile);
+      // base64만 쓴다. 임시 압축 파일은 바로 지운다.
+      await imageService.deleteTempFile(fullProcessed.file);
       final previewBase64 = await imageService.processPreviewImage(imageFile);
       if (!_isCurrent(token)) return false;
 
-      var params = transform.transformParams;
-      // 설정에서 얼굴/체형 보정을 끈 것이 확인되면 저장된 체형 값을 쓰지 않는다.
-      // (분석 당시 켜져 있었을 수 있다. 서버도 꺼져 있으면 0으로 계산한다.)
-      if (!await _reshapeEnabled()) {
-        params = params.copyWith(
-          faceSlim: 0.0,
-          jawSharpen: 0.0,
-          eyeEnlarge: 0.0,
-          legStretch: 0.0,
-          shoulderWidth: 0.0,
-          waistSlim: 0.0,
-        );
-      }
-      // 피부 보정을 꺼 두었으면 저장된 잡티 제거·피부 스무딩 값도 쓰지 않는다.
-      var regionParams = transform.regionParams;
-      if (!await _skinRetouchEnabled()) {
-        final stripped = withoutSkinRetouch(params, regionParams);
-        params = stripped.params;
-        regionParams = stripped.regionParams;
-      }
+      // 설정에서 얼굴/체형 보정·피부 보정을 끈 것이 확인되면 저장된 값을 쓰지
+      // 않는다 (분석 당시 켜져 있었을 수 있다. 서버도 꺼져 있으면 0으로 계산한다).
+      final applied = await _applyRetouchSettings(
+          transform.transformParams, transform.regionParams);
+      final params = applied.params;
+      final regionParams = applied.regionParams;
       if (!_isCurrent(token)) return false;
 
       state = state.copyWith(
@@ -604,16 +633,17 @@ class TransformNotifier extends Notifier<TransformState> {
     try {
       final transformRepo = ref.read(transformRepositoryProvider);
       final cancelToken = _manualCancelToken;
-      final skin = await _applySkinSetting(params, state.regionParams);
+      final applied = await _applyRetouchSettings(params, state.regionParams);
       if (cancelToken?.isCancelled ?? false) return;
+      final sent = applied.params;
 
       // reshape이 활성화되면 고해상도로 전송 (랜드마크 검출 정확도)
-      final needsReshape = params.faceSlim >= 0.01 ||
-          params.jawSharpen >= 0.01 ||
-          params.eyeEnlarge >= 0.01 ||
-          params.legStretch >= 0.01 ||
-          params.shoulderWidth.abs() >= 0.01 ||
-          params.waistSlim >= 0.01;
+      final needsReshape = sent.faceSlim >= 0.01 ||
+          sent.jawSharpen >= 0.01 ||
+          sent.eyeEnlarge >= 0.01 ||
+          sent.legStretch >= 0.01 ||
+          sent.shoulderWidth.abs() >= 0.01 ||
+          sent.waistSlim >= 0.01;
 
       final String? base64;
       final bool usePreview;
@@ -634,9 +664,9 @@ class TransformNotifier extends Notifier<TransformState> {
         imageFile: base64 == null ? imageFile : null,
         imageBase64: base64,
         preview: usePreview,
-        params: skin.params,
+        params: sent,
         autoEdits: state.autoEdits,
-        regionParams: skin.regionParams,
+        regionParams: applied.regionParams,
         toneCurvePoints: state.toneCurvePoints,
         cancelToken: cancelToken,
       );
@@ -659,9 +689,7 @@ class TransformNotifier extends Notifier<TransformState> {
         return;
       }
       developer.log('applyManual failed: $e', name: 'Transform');
-      final msg = e is ApiException
-          ? (e as ApiException).userMessage
-          : '변형 적용에 실패했습니다. 다시 시도해 주세요';
+      const msg = '변형 적용에 실패했습니다. 다시 시도해 주세요';
       state = state.copyWith(
         status: TransformStatus.ready,
         errorMessage: msg,
@@ -700,7 +728,7 @@ class TransformNotifier extends Notifier<TransformState> {
   /// 저장·공유([renderForExport])와 기록 복원([openRecord])이 함께 쓴다 —
   /// 둘이 다른 요청을 만들면 복원한 After와 저장본이 달라진다.
   ///
-  /// 설정에서 피부 보정을 끄면 잡티 제거·피부 스무딩을 0으로 보낸다 —
+  /// 설정에서 피부 보정·얼굴/체형 보정을 끄면 그 값을 0으로 보낸다 —
   /// apply-transform은 받은 값을 그대로 쓰므로 앱이 직접 걸러야 한다.
   Future<Map<String, dynamic>> _renderFullQuality(
     File imageFile, {
@@ -708,20 +736,19 @@ class TransformNotifier extends Notifier<TransformState> {
   }) async {
     final transformRepo = ref.read(transformRepositoryProvider);
     final fullBase64 = state.cachedFullBase64;
-    final skin = await _applySkinSetting(state.params, state.regionParams);
+    final applied = await _applyRetouchSettings(state.params, state.regionParams);
     return transformRepo.applyManualTransform(
       imageFile: fullBase64 == null ? imageFile : null,
       imageBase64: fullBase64,
       preview: false,
-      params: skin.params,
+      params: applied.params,
       autoEdits: state.autoEdits,
-      regionParams: skin.regionParams,
+      regionParams: applied.regionParams,
       toneCurvePoints: state.toneCurvePoints,
       cancelToken: cancelToken,
     );
   }
 
-  /// 설정의 '피부 보정' 값. 읽지 못하면 기본값(켜짐).
   /// '얼굴/체형 보정' 설정. 로드 전이면 기다려서 읽는다 (읽기 실패 시 꺼짐).
   Future<bool> _reshapeEnabled() async {
     try {
@@ -732,6 +759,7 @@ class TransformNotifier extends Notifier<TransformState> {
     }
   }
 
+  /// 설정의 '피부 보정' 값. 읽지 못하면 기본값(켜짐).
   Future<bool> _skinRetouchEnabled() async {
     try {
       return await ref.read(skinRetouchEnabledSettingProvider.future);
@@ -741,16 +769,22 @@ class TransformNotifier extends Notifier<TransformState> {
     }
   }
 
-  /// 피부 보정이 꺼져 있으면 apply-transform에 보낼 피부 값을 0으로 만든다.
+  /// 설정에 맞춰 apply-transform에 보낼 값을 거른다.
+  /// 피부 보정이 꺼져 있으면 피부 값을, 얼굴/체형 보정이 꺼져 있으면
+  /// 체형 값을 0으로 만든다.
   Future<({TransformParams params, Map<String, dynamic>? regionParams})>
-      _applySkinSetting(
+      _applyRetouchSettings(
     TransformParams params,
     Map<String, dynamic>? regionParams,
   ) async {
-    if (await _skinRetouchEnabled()) {
-      return (params: params, regionParams: regionParams);
+    var out = (params: params, regionParams: regionParams);
+    if (!await _reshapeEnabled()) {
+      out = (params: withoutReshape(out.params), regionParams: out.regionParams);
     }
-    return withoutSkinRetouch(params, regionParams);
+    if (!await _skinRetouchEnabled()) {
+      out = withoutSkinRetouch(out.params, out.regionParams);
+    }
+    return out;
   }
 
   Future<String?> saveTransformedImage(File imageFile) async {
@@ -782,8 +816,6 @@ class TransformNotifier extends Notifier<TransformState> {
         await File(savePath).delete();
       } catch (_) {}
 
-      await _saveFeedback();
-
       state = state.copyWith(
         status: TransformStatus.ready,
         transformedImageBytes: bytes,
@@ -799,71 +831,6 @@ class TransformNotifier extends Notifier<TransformState> {
         errorMessage: msg,
       );
       return null;
-    }
-  }
-
-  Future<void> _saveFeedback() async {
-    final originalParams = state.originalParams;
-    if (originalParams == null) return;
-
-    String userId = '';
-    try {
-      final authState = ref.read(instagramAuthProvider);
-      userId = authState.userId ?? '';
-    } catch (_) {}
-
-    if (userId.isEmpty) return;
-
-    try {
-      final delta = state.params.deltaFrom(originalParams);
-
-      final hasChange = delta.values.any((v) => v.abs() > 0.001);
-      if (!hasChange) return;
-
-      final styleRepo = ref.read(styleRepositoryProvider);
-
-      // 1. delta 저장
-      await styleRepo.saveFeedback(userId: userId, delta: delta);
-
-      // 2. 누적 피드백 로드 및 평균 계산
-      final history = await styleRepo.loadFeedbackHistory(userId);
-      if (history.isEmpty) return;
-
-      final avgDelta = <String, double>{};
-      final allKeys = history.expand((m) => m.keys).toSet();
-      for (final key in allKeys) {
-        final values = history
-            .where((m) => m.containsKey(key))
-            .map((m) => m[key]!)
-            .toList();
-        avgDelta[key] = values.reduce((a, b) => a + b) / values.length;
-      }
-
-      // 3. targetParams 업데이트 (학습률 0.3)
-      await styleRepo.updateTargetParams(
-        userId: userId,
-        avgDelta: avgDelta,
-        learningRate: 0.3,
-      );
-
-      // 4. 인메모리 스타일 프로필의 targetParams도 업데이트
-      final styleProfile = ref.read(userStyleProfileProvider);
-      if (styleProfile != null) {
-        final currentTarget =
-            Map<String, dynamic>.from(styleProfile['targetParams'] ?? {});
-        for (final entry in avgDelta.entries) {
-          final oldVal = (currentTarget[entry.key] as num?)?.toDouble() ?? 0.0;
-          currentTarget[entry.key] =
-              (oldVal + 0.3 * entry.value).clamp(-1.0, 1.0);
-        }
-        styleProfile['targetParams'] = currentTarget;
-        ref.read(userStyleProfileProvider.notifier).state = {...styleProfile};
-      }
-
-      developer.log('Feedback saved and targetParams updated',
-          name: 'Transform');
-    } catch (e) {
-      developer.log('_saveFeedback failed: $e', name: 'Transform');
     }
   }
 }

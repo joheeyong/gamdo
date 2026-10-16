@@ -12,7 +12,7 @@ import '../../../../core/services/stored_path.dart';
 import '../../domain/entities/analysis_job_progress.dart';
 import '../../domain/entities/stored_transform.dart';
 import '../../domain/repositories/analysis_repository.dart';
-import '../claude_datasource.dart';
+import '../datasources/gamdo_agent_datasource.dart';
 
 /// [AnalysisRepository] 구현체 — GamdoAgentDatasource + ImageService + DB.
 class AnalysisRepositoryImpl implements AnalysisRepository {
@@ -75,6 +75,7 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
   @override
   Future<AnalyzeRecordResult> analyzeAndTransformRecord({
     required File imageFile,
+    ({File file, String base64})? processedImage,
     Map<String, dynamic>? styleProfile,
     String userId = '',
     bool reshapeEnabled = false,
@@ -83,8 +84,46 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
     int? recordId,
     void Function(AnalysisJobProgress progress)? onProgress,
   }) async {
+    // 호출부가 이미 압축했으면 그대로 쓴다. 여기서 만든 압축본만 여기서 지운다.
+    if (processedImage != null) {
+      return _analyzeAndTransformRecord(
+        processedImage,
+        styleProfile: styleProfile,
+        userId: userId,
+        reshapeEnabled: reshapeEnabled,
+        skinRetouchEnabled: skinRetouchEnabled,
+        cancelToken: cancelToken,
+        recordId: recordId,
+        onProgress: onProgress,
+      );
+    }
     final processed = await _imageService.processImage(imageFile);
+    try {
+      return await _analyzeAndTransformRecord(
+        processed,
+        styleProfile: styleProfile,
+        userId: userId,
+        reshapeEnabled: reshapeEnabled,
+        skinRetouchEnabled: skinRetouchEnabled,
+        cancelToken: cancelToken,
+        recordId: recordId,
+        onProgress: onProgress,
+      );
+    } finally {
+      await _imageService.deleteTempFile(processed.file);
+    }
+  }
 
+  Future<AnalyzeRecordResult> _analyzeAndTransformRecord(
+    ({File file, String base64}) processed, {
+    required Map<String, dynamic>? styleProfile,
+    required String userId,
+    required bool reshapeEnabled,
+    required bool skinRetouchEnabled,
+    required CancelToken? cancelToken,
+    required int? recordId,
+    required void Function(AnalysisJobProgress progress)? onProgress,
+  }) async {
     final result = await _datasource.analyzeAndTransform(
       imageBase64: processed.base64,
       styleProfile: styleProfile ?? {},
@@ -100,8 +139,11 @@ class AnalysisRepositoryImpl implements AnalysisRepository {
     // 기록에서 다시 열 때 AI 없이 apply-transform으로 같은 그림을 그리기 위한 값
     final transformJson = StoredTransform.fromServerResult(result).encode();
 
-    final styleCategory =
-        (analysis['toneReport']?['styleCategory'] as String?) ?? '분석완료';
+    // 비어 있으면 없는 것으로 본다 (기록 목록에 빈 칩이 뜨지 않게).
+    final rawCategory = analysis['toneReport']?['styleCategory'];
+    final styleCategory = rawCategory is String && rawCategory.trim().isNotEmpty
+        ? rawCategory.trim()
+        : '분석완료';
     final colorTemp =
         (analysis['colorAnalysis']?['colorTemperature'] as String?) ?? 'neutral';
     final docsDir = await _documentsDir();

@@ -5,7 +5,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/services/image_service.dart';
 import '../../domain/entities/transform_params.dart';
 import '../../domain/repositories/transform_repository.dart';
-import '../claude_datasource.dart';
+import '../datasources/gamdo_agent_datasource.dart';
 
 /// [TransformRepository] 구현체 — GamdoAgentDatasource + ImageService.
 class TransformRepositoryImpl implements TransformRepository {
@@ -19,31 +19,6 @@ class TransformRepositoryImpl implements TransformRepository {
         _imageService = imageService;
 
   @override
-  Future<TransformResult> autoTransform({
-    required File imageFile,
-    required Map<String, dynamic> analysis,
-    Map<String, dynamic>? styleProfile,
-  }) async {
-    final processed = await _imageService.processImage(imageFile);
-    final result = await _datasource.autoTransform(
-      imageBase64: processed.base64,
-      analysis: analysis,
-      styleProfile: styleProfile,
-    );
-
-    final imageB64 = result['image_base64'] as String;
-    final paramsMap = result['params'] as Map<String, dynamic>?;
-    final params = paramsMap != null
-        ? TransformParams.fromJson(paramsMap)
-        : const TransformParams();
-
-    return TransformResult(
-      imageBytes: Uri.parse('data:;base64,$imageB64').data!.contentAsBytes(),
-      params: params,
-    );
-  }
-
-  @override
   Future<Map<String, dynamic>> applyManualTransform({
     File? imageFile,
     String? imageBase64,
@@ -54,8 +29,7 @@ class TransformRepositoryImpl implements TransformRepository {
     List<dynamic>? toneCurvePoints,
     CancelToken? cancelToken,
   }) async {
-    final base64 = imageBase64 ??
-        (await _imageService.processImage(imageFile!)).base64;
+    final base64 = imageBase64 ?? await _compressToBase64(imageFile!);
 
     return _datasource.applyTransform(
       imageBase64: base64,
@@ -94,5 +68,12 @@ class TransformRepositoryImpl implements TransformRepository {
       waistSlim: params.waistSlim,
       cancelToken: cancelToken,
     );
+  }
+
+  /// 압축해 base64만 쓰고 임시 압축 파일은 바로 지운다.
+  Future<String> _compressToBase64(File imageFile) async {
+    final processed = await _imageService.processImage(imageFile);
+    await _imageService.deleteTempFile(processed.file);
+    return processed.base64;
   }
 }

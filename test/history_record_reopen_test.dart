@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gamdo/core/services/database.dart';
 import 'package:gamdo/core/services/image_service.dart';
-import 'package:gamdo/features/analysis/data/claude_datasource.dart';
+import 'package:gamdo/features/analysis/data/datasources/gamdo_agent_datasource.dart';
 import 'package:gamdo/features/analysis/data/repositories/analysis_repository_impl.dart';
 import 'package:gamdo/features/analysis/data/repositories/transform_repository_impl.dart';
 import 'package:gamdo/features/analysis/di/analysis_providers.dart';

@@ -16,9 +16,9 @@ _PhotoAnalysisResponse _$PhotoAnalysisResponseFromJson(
     json['compositionAnalysis'] as Map<String, dynamic>,
   ),
   toneReport: ToneReport.fromJson(json['toneReport'] as Map<String, dynamic>),
-  hashtags:
-      (json['hashtags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
-      const [],
+  warnings:
+      (json['warnings'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const <String>[],
 );
 
 Map<String, dynamic> _$PhotoAnalysisResponseToJson(
@@ -27,7 +27,7 @@ Map<String, dynamic> _$PhotoAnalysisResponseToJson(
   'colorAnalysis': instance.colorAnalysis,
   'compositionAnalysis': instance.compositionAnalysis,
   'toneReport': instance.toneReport,
-  'hashtags': instance.hashtags,
+  'warnings': instance.warnings,
 };
 
 _ColorAnalysis _$ColorAnalysisFromJson(Map<String, dynamic> json) =>

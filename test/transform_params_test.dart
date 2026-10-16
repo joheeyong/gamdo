@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gamdo/core/services/image_service.dart';
-import 'package:gamdo/features/analysis/data/claude_datasource.dart';
+import 'package:gamdo/features/analysis/data/datasources/gamdo_agent_datasource.dart';
 import 'package:gamdo/features/analysis/data/repositories/transform_repository_impl.dart';
 import 'package:gamdo/features/analysis/domain/entities/transform_params.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,19 +46,13 @@ void main() {
       expect(p.backgroundBlur, 0.5);
     });
 
-    test('copyWith/toMap/deltaFrom에 포함된다', () {
+    test('copyWith에 포함된다', () {
       const base = TransformParams(autoWb: 0.3, denoise: 0.2, backgroundBlur: 0.1);
       final copied = base.copyWith(brightness: 0.5);
       expect(copied.autoWb, 0.3);
       expect(copied.denoise, 0.2);
       expect(copied.backgroundBlur, 0.1);
       expect(base.copyWith(denoise: 0.9).denoise, 0.9);
-
-      final map = base.toMap();
-      expect(map['autoWb'], 0.3);
-      expect(map['denoise'], 0.2);
-      expect(map['backgroundBlur'], 0.1);
-      expect(base.deltaFrom(base).values.every((v) => v == 0), isTrue);
     });
   });
 

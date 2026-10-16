@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,50 +8,12 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/providers/style_profile_provider.dart';
-import '../../../../core/services/firebase_service.dart'
-    show mergeLearnedTargetParams;
 export '../../../../core/providers/style_profile_provider.dart';
 import '../../../../core/services/instagram_service.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../di/analysis_providers.dart';
 import '../../../../core/services/analytics_service.dart';
-
-class AnalysisResult {
-  final int id;
-  final String analysisJson;
-  final String imagePath;
-
-  AnalysisResult({
-    required this.id,
-    required this.analysisJson,
-    required this.imagePath,
-  });
-}
-
-class AnalysisNotifier extends Notifier<AsyncValue<AnalysisResult?>> {
-  @override
-  AsyncValue<AnalysisResult?> build() => const AsyncData(null);
-
-  /// 사용자 게시글/피드/스토리 분석
-  Future<Map<String, dynamic>> analyzeUser({
-    List<Map<String, dynamic>> posts = const [],
-    List<Map<String, dynamic>> feeds = const [],
-    List<Map<String, dynamic>> stories = const [],
-  }) async {
-    final repo = ref.read(analysisRepositoryDIProvider);
-    final result = await repo.analyzeUser(
-      posts: posts,
-      feeds: feeds,
-      stories: stories,
-    );
-    ref.read(userStyleProfileProvider.notifier).state = result['styleProfile'];
-    return result;
-  }
-}
-
-final analysisProvider =
-    NotifierProvider<AnalysisNotifier, AsyncValue<AnalysisResult?>>(() {
-  return AnalysisNotifier();
-});
+import 'transform_provider.dart';
 
 // ── Style Analysis Pipeline ──
 
@@ -66,31 +29,37 @@ enum StyleAnalysisStatus {
 class StyleAnalysisState {
   final StyleAnalysisStatus status;
   final String? errorMessage;
-  final int mediaCount;
 
   const StyleAnalysisState({
     this.status = StyleAnalysisStatus.idle,
     this.errorMessage,
-    this.mediaCount = 0,
   });
 
   StyleAnalysisState copyWith({
     StyleAnalysisStatus? status,
     String? errorMessage,
-    int? mediaCount,
   }) {
     return StyleAnalysisState(
       status: status ?? this.status,
       errorMessage: errorMessage,
-      mediaCount: mediaCount ?? this.mediaCount,
     );
   }
+
+  /// 파이프라인이 진행 중인지 (미디어 조회 ~ 프로필 저장).
+  bool get isRunning =>
+      status == StyleAnalysisStatus.fetchingMedia ||
+      status == StyleAnalysisStatus.analyzingStyle ||
+      status == StyleAnalysisStatus.savingProfile;
+
+  /// 서버는 받은 게시물 중 사진을 최대 [maxAnalyzedPhotos]장까지만 분석한다
+  /// (동영상·스토리 등 전체 개수를 세면 실제보다 많아 보인다).
+  static const maxAnalyzedPhotos = 10;
 
   String get statusMessage => switch (status) {
         StyleAnalysisStatus.idle => '',
         StyleAnalysisStatus.fetchingMedia => '게시글, 피드, 스토리를 가져오는 중...',
         StyleAnalysisStatus.analyzingStyle =>
-          '$mediaCount개 콘텐츠의 스타일을 분석하는 중...',
+          '최근 사진을 최대 $maxAnalyzedPhotos장까지 골라 스타일을 분석하는 중...',
         StyleAnalysisStatus.savingProfile => '프로필을 저장하는 중...',
         StyleAnalysisStatus.completed => '스타일 분석이 완료되었습니다!',
         StyleAnalysisStatus.error => errorMessage ?? '분석 중 오류가 발생했습니다',
@@ -106,11 +75,34 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
   @override
   StyleAnalysisState build() => const StyleAnalysisState();
 
+  /// 지금 파이프라인이 돌고 있는지. 같은 분석이 두 번 겹쳐 돌지 않게 막는다
+  /// (로그인 직후 자동 실행 중에 '다시 분석'을 누르는 경우 등).
+  bool _inFlight = false;
+
+  /// 연결된 계정으로 스타일 분석을 다시 돌린다 (연결 해제 없이).
+  ///
+  /// 연결 정보가 없거나 이미 분석 중이면 아무것도 하지 않는다.
+  Future<void> reanalyzeConnectedAccount() async {
+    final auth = ref.read(instagramAuthProvider);
+    final token = auth.accessToken;
+    final userId = auth.userId;
+    if (!auth.isConnected || token == null || userId == null) return;
+    await analyzeInstagramProfile(accessToken: token, userId: userId);
+  }
+
   /// Instagram 프로필 분석 파이프라인.
+  ///
+  /// 이미 실행 중이면 새로 시작하지 않고 바로 돌아온다.
   Future<void> analyzeInstagramProfile({
     required String accessToken,
     required String userId,
   }) async {
+    if (_inFlight) {
+      developer.log('Style analysis already running — skip',
+          name: 'StyleAnalysis');
+      return;
+    }
+    _inFlight = true;
     _runId++;
     try {
       // 1. 미디어 조회
@@ -163,10 +155,7 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
         return;
       }
 
-      state = state.copyWith(
-        status: StyleAnalysisStatus.analyzingStyle,
-        mediaCount: totalCount,
-      );
+      state = state.copyWith(status: StyleAnalysisStatus.analyzingStyle);
       developer.log(
           'Analyzing $totalCount items (posts: ${postItems.length}, '
           'feeds: ${feedItems.length}, stories: ${storiesRaw.length})',
@@ -229,15 +218,18 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
         recommendations: recommendations,
       );
 
-      // 6. 인메모리 캐시 업데이트 — 학습된 targetParams는 유지
-      //    (RTDB도 styleProfile/targetParams를 건드리지 않는다)
-      ref.read(userStyleProfileProvider.notifier).state =
-          mergeLearnedTargetParams(
-              styleProfile, ref.read(userStyleProfileProvider));
+      // 6. 인메모리 캐시 업데이트
+      ref.read(userStyleProfileProvider.notifier).state = styleProfile;
 
       AnalyticsService.instance.styleProfileCreated();
       state = state.copyWith(status: StyleAnalysisStatus.completed);
       developer.log('Style analysis completed', name: 'StyleAnalysis');
+
+      // 서버가 이번 분석으로 대표 사진을 새로 골랐다. 이미 받아 둔 목록이
+      // 있어도 다시 받는다.
+      unawaited(ref
+          .read(transformProvider.notifier)
+          .loadReferenceImages(force: true));
     } catch (e) {
       developer.log('Style analysis failed: $e', name: 'StyleAnalysis');
       final msg = e is ApiException ? e.userMessage : '분석 중 오류가 발생했습니다. 다시 시도해 주세요';
@@ -246,6 +238,8 @@ class StyleAnalysisNotifier extends Notifier<StyleAnalysisState> {
         status: StyleAnalysisStatus.error,
         errorMessage: msg,
       );
+    } finally {
+      _inFlight = false;
     }
   }
 

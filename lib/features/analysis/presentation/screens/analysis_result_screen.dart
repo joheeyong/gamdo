@@ -11,6 +11,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
 import '../../domain/photo_analysis.dart';
+import '../widgets/analysis_warning_note.dart';
 import '../widgets/color_palette_view.dart';
 import '../widgets/color_temperature_gauge.dart';
 import '../widgets/saturation_chart.dart';
@@ -66,12 +67,22 @@ class AnalysisResultScreen extends StatelessWidget {
     final score = (analysisMap['feedCompatibility'] as num?)?.round();
     final scoreBefore = (analysisMap['feedCompatibilityBefore'] as num?)?.round();
 
+    // 서버가 일부 필드를 기본값('분석 불가'·빈 문자열)으로 메웠으면 그 카드는
+    // 숨기고 작은 안내만 보여 준다.
+    final style = displayableAnalysisText(analysis.toneReport.styleCategory);
+    final mood = displayableAnalysisText(analysis.toneReport.overallMood);
+    final harmony = displayableAnalysisText(analysis.colorAnalysis.colorHarmony);
+    final technique =
+        displayableAnalysisText(analysis.compositionAnalysis.primaryTechnique);
+    final hasToneReport = ToneReportCard.hasContent(analysis.toneReport);
+
     void share() {
       final summary = StringBuffer()
         ..writeln('감도 분석 결과')
-        ..writeln()
-        ..writeln('스타일: ${analysis.toneReport.styleCategory}')
-        ..writeln('분위기: ${analysis.toneReport.overallMood}')
+        ..writeln();
+      if (style != null) summary.writeln('스타일: $style');
+      if (mood != null) summary.writeln('분위기: $mood');
+      summary
         ..writeln()
         ..writeln('#감도 #사진분석 #AI코칭');
       SharePlus.instance.share(ShareParams(text: summary.toString()));
@@ -117,21 +128,23 @@ class AnalysisResultScreen extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (score != null) ...[
+                      if (score != null)
                         Expanded(
                           child: _ScoreCard(score: score, before: scoreBefore),
                         ),
+                      if (score != null && style != null)
                         const SizedBox(width: 10),
-                      ],
-                      Expanded(
-                        child: _StyleSummaryCard(
-                          style: analysis.toneReport.styleCategory,
-                          mood: analysis.toneReport.overallMood,
+                      if (style != null)
+                        Expanded(
+                          child: _StyleSummaryCard(
+                            style: style,
+                            mood: mood ?? '',
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
+                if (analysis.warnings.isNotEmpty) const AnalysisWarningNote(),
               ]),
             ),
           ),
@@ -157,25 +170,30 @@ class AnalysisResultScreen extends StatelessWidget {
                   saturation: analysis.colorAnalysis.saturationLevel,
                   brightness: analysis.colorAnalysis.brightnessLevel,
                 ),
-                const SizedBox(height: 16),
-                _HarmonyCard(harmony: analysis.colorAnalysis.colorHarmony),
+                if (harmony != null) ...[
+                  const SizedBox(height: 16),
+                  _HarmonyCard(harmony: harmony),
+                ],
                 const SizedBox(height: 24),
 
                 // Composition Analysis Section
-                _SectionHeader(title: context.l10n.compositionAnalysis),
-                const SizedBox(height: 12),
-                if (imagePath != null)
+                if (imagePath != null && technique != null) ...[
+                  _SectionHeader(title: context.l10n.compositionAnalysis),
+                  const SizedBox(height: 12),
                   CompositionOverlay(
                     imagePath: imagePath!,
-                    technique: analysis.compositionAnalysis.primaryTechnique,
+                    technique: technique,
                     balanceScore: analysis.compositionAnalysis.balanceScore,
                   ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
+                ],
 
                 // Tone Report Section
-                _SectionHeader(title: context.l10n.toneReport),
-                const SizedBox(height: 12),
-                ToneReportCard(toneReport: analysis.toneReport),
+                if (hasToneReport) ...[
+                  _SectionHeader(title: context.l10n.toneReport),
+                  const SizedBox(height: 12),
+                  ToneReportCard(toneReport: analysis.toneReport),
+                ],
                 const SizedBox(height: 40),
               ]),
             ),

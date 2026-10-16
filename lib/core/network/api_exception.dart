@@ -8,11 +8,17 @@ class ApiException implements Exception {
   /// DioException에서 만들어졌다면 그 종류. 문자열 매칭보다 정확하다.
   final DioExceptionType? dioType;
 
+  /// [message]가 서버가 사용자에게 보여 주려고 만든 문장인지.
+  /// (분석 작업의 status:error, success:false 결과 등). true면 [userMessage]가
+  /// 일반 문구 대신 이 문장을 그대로 쓴다.
+  final bool userFacing;
+
   const ApiException({
     required this.message,
     this.statusCode,
     this.data,
     this.dioType,
+    this.userFacing = false,
   });
 
   /// DioException → ApiException. 타임아웃/연결 오류를 종류로 구분할 수 있다.
@@ -26,9 +32,12 @@ class ApiException implements Exception {
   static const _networkTypes = {
     DioExceptionType.connectionTimeout,
     DioExceptionType.sendTimeout,
-    DioExceptionType.receiveTimeout,
     DioExceptionType.connectionError,
   };
+
+  /// 응답 대기 시간 초과. 연결은 됐지만 서버 처리가 길었다는 뜻이라
+  /// 인터넷 연결 문구를 보여 주면 틀린 안내가 된다.
+  static const slowResponseMessage = '응답이 오래 걸리고 있어요. 잠시 후 다시 시도해 주세요';
 
   // Dio 메시지는 'receiveTimeout', 'connectTimeout'처럼 대소문자가 섞여 있어
   // 소문자로 바꿔 비교한다.
@@ -44,6 +53,8 @@ class ApiException implements Exception {
 
   /// 사용자에게 보여줄 친화적 에러 메시지.
   String get userMessage {
+    if (userFacing && message.trim().isNotEmpty) return message.trim();
+    if (dioType == DioExceptionType.receiveTimeout) return slowResponseMessage;
     // 네트워크 연결 문제 (statusCode 유무와 무관)
     if (_networkTypes.contains(dioType)) {
       return '인터넷 연결을 확인해 주세요';

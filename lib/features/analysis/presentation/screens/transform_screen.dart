@@ -12,8 +12,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
 import '../../../../core/widgets/instagram_widgets.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../domain/photo_analysis.dart';
 import '../providers/transform_provider.dart';
+import '../widgets/analysis_warning_note.dart';
 import '../widgets/color_palette_view.dart';
 import '../widgets/color_temperature_gauge.dart';
 import '../widgets/photo_viewer.dart';
@@ -358,7 +360,10 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
                         onSave: _onSave,
                       ),
 
-                    // ── 2-1. 크롭 제안 (서버는 구도를 자동으로 바꾸지 않는다) ──
+                    // ── 2-1. 크롭 제안 ──
+                    // 서버는 화면의 60% 이상을 남기는 크롭만 자동으로 적용하고
+                    // (85%를 넘게 남기면 버린다), 더 많이 잘라내는 크롭은 여기서
+                    // 사용자가 고르도록 제안으로만 둔다.
                     if (transformState.transformedImageBytes != null &&
                         transformState.hasCropSuggestion)
                       _CropSuggestionRow(
@@ -373,15 +378,26 @@ class _TransformScreenState extends ConsumerState<TransformScreen> {
                       ),
 
                     // ── 2-2. 인스타그램 비율에 맞춰 자동으로 자른 경우 그 이유 ──
+                    // 추천 크롭을 적용하면 서버가 그 크롭 기준으로 비율을 다시
+                    // 계산하므로, 분석 때 써 둔 이유가 틀릴 수 있어 숨긴다.
                     if (transformState.transformedImageBytes != null &&
-                        transformState.ratioReason != null)
+                        transformState.ratioReason != null &&
+                        !transformState.cropSuggestionApplied)
                       _CropReasonNote(text: transformState.ratioReason!),
 
                     // ── 3. 적용된 변형 요약 ──
+                    // 설정에서 끈 보정은 저장·공유에도 들어가지 않으므로 빼고 보여 준다.
                     _AppliedTransformsSummary(
                       params: transformState.params,
                       comment: transformState.paramsComment,
                       styleName: transformState.appliedStyleName,
+                      skinRetouchEnabled: ref
+                              .watch(skinRetouchEnabledSettingProvider)
+                              .value ??
+                          true,
+                      reshapeEnabled:
+                          ref.watch(reshapeEnabledSettingProvider).value ??
+                              false,
                     ),
 
                     const SizedBox(height: 16),
@@ -443,10 +459,19 @@ class _AppliedTransformsSummary extends StatelessWidget {
   /// 설정에서 고른 보정 스타일 이름 (자동이면 null).
   final String? styleName;
 
+  /// 설정의 '피부 보정'. 꺼져 있으면 잡티 제거·피부 보정을 보여 주지 않는다
+  /// (저장·공유할 때 0으로 빠진다).
+  final bool skinRetouchEnabled;
+
+  /// 설정의 '얼굴/체형 보정'. 꺼져 있으면 얼굴·체형 항목을 보여 주지 않는다.
+  final bool reshapeEnabled;
+
   const _AppliedTransformsSummary({
     required this.params,
     this.comment,
     this.styleName,
+    this.skinRetouchEnabled = true,
+    this.reshapeEnabled = false,
   });
 
   @override
@@ -503,10 +528,10 @@ class _AppliedTransformsSummary extends StatelessWidget {
     }
 
     // 피부 보정
-    if (params.blemishRemoval >= 0.01) {
+    if (skinRetouchEnabled && params.blemishRemoval >= 0.01) {
       items.add(_TransformItem(Icons.auto_fix_high_outlined, '\uC7A1\uD2F0 \uC81C\uAC70', params.blemishRemoval));
     }
-    if (params.skinSmoothing >= 0.01) {
+    if (skinRetouchEnabled && params.skinSmoothing >= 0.01) {
       items.add(_TransformItem(Icons.face_outlined, '\uD53C\uBD80 \uBCF4\uC815', params.skinSmoothing));
     }
 
@@ -525,23 +550,24 @@ class _AppliedTransformsSummary extends StatelessWidget {
     }
 
     // 얼굴/체형
-    if (params.faceSlim >= 0.01) {
-      items.add(_TransformItem(Icons.face_retouching_natural, '\uC5BC\uAD74 \uCD95\uC18C', params.faceSlim));
+    final body = reshapeEnabled ? params : withoutReshape(params);
+    if (body.faceSlim >= 0.01) {
+      items.add(_TransformItem(Icons.face_retouching_natural, '\uC5BC\uAD74 \uCD95\uC18C', body.faceSlim));
     }
-    if (params.jawSharpen >= 0.01) {
-      items.add(_TransformItem(Icons.architecture_outlined, '\uD131\uC120', params.jawSharpen));
+    if (body.jawSharpen >= 0.01) {
+      items.add(_TransformItem(Icons.architecture_outlined, '\uD131\uC120', body.jawSharpen));
     }
-    if (params.eyeEnlarge >= 0.01) {
-      items.add(_TransformItem(Icons.visibility_outlined, '\uB208 \uD655\uB300', params.eyeEnlarge));
+    if (body.eyeEnlarge >= 0.01) {
+      items.add(_TransformItem(Icons.visibility_outlined, '\uB208 \uD655\uB300', body.eyeEnlarge));
     }
-    if (params.legStretch >= 0.01) {
-      items.add(_TransformItem(Icons.straighten_outlined, '\uB2E4\uB9AC \uB298\uB9AC\uAE30', params.legStretch));
+    if (body.legStretch >= 0.01) {
+      items.add(_TransformItem(Icons.straighten_outlined, '\uB2E4\uB9AC \uB298\uB9AC\uAE30', body.legStretch));
     }
-    if (params.shoulderWidth.abs() >= 0.01) {
-      items.add(_TransformItem(Icons.open_in_full_outlined, '\uC5B4\uAE68 \uB108\uBE44', params.shoulderWidth));
+    if (body.shoulderWidth.abs() >= 0.01) {
+      items.add(_TransformItem(Icons.open_in_full_outlined, '\uC5B4\uAE68 \uB108\uBE44', body.shoulderWidth));
     }
-    if (params.waistSlim >= 0.01) {
-      items.add(_TransformItem(Icons.compress_outlined, '\uD5C8\uB9AC \uB77C\uC778', params.waistSlim));
+    if (body.waistSlim >= 0.01) {
+      items.add(_TransformItem(Icons.compress_outlined, '\uD5C8\uB9AC \uB77C\uC778', body.waistSlim));
     }
 
     if (items.isEmpty) {
@@ -614,13 +640,20 @@ class _AppliedTransformsSummary extends StatelessWidget {
     );
   }
 
-  String _toneCurveLabel(String preset) => switch (preset) {
+  /// 서버 톤 커브 프리셋 id → 한국어 이름 (image_processor.TONE_CURVE_PRESETS).
+  /// 모르는 id면 null — 칩에 내부 id 대신 강도 숫자를 보여 준다.
+  String? _toneCurveLabel(String preset) => switch (preset) {
         's_curve' => 'S\uCEE4\uBE0C',
         'film' => '\uD544\uB984',
         'fade' => '\uD398\uC774\uB4DC',
         'high_contrast' => '\uACE0\uB300\uBE44',
         'bright' => '\uBC1D\uAC8C',
-        _ => preset,
+        'soft_film' => '소프트 필름',
+        'flash' => '플래시',
+        'pastel' => '파스텔',
+        'bw' => '흑백',
+        'gamsung' => '감성',
+        _ => null,
       };
 }
 
@@ -665,10 +698,13 @@ class _ParsedAnalysis extends StatelessWidget {
         children: [
           _SectionTitle(icon: Icons.analytics_outlined, title: '\uBD84\uC11D'),
           const SizedBox(height: 4),
+          if (analysis.warnings.isNotEmpty) const AnalysisWarningNote(),
 
-          // 점수 + 톤 리포트
-          ToneReportCard(toneReport: analysis.toneReport),
-          const SizedBox(height: 12),
+          // 점수 + 톤 리포트 (서버가 비워 둔 항목은 카드가 알아서 숨긴다)
+          if (ToneReportCard.hasContent(analysis.toneReport)) ...[
+            ToneReportCard(toneReport: analysis.toneReport),
+            const SizedBox(height: 12),
+          ],
 
           // 색감
           ColorPaletteView(

@@ -79,11 +79,30 @@ class ImageService {
         minHeight: ApiConstants.fallbackImageSize,
       );
       if (fallbackResult != null) {
+        await deleteTempFile(compressedFile);
         compressedFile = File(fallbackResult.path);
       }
     }
 
     return compressedFile;
+  }
+
+  /// [processImage]/[compressImage]가 임시 폴더에 만든 압축 파일을 지운다.
+  ///
+  /// 압축에 실패하면 원본 파일이 그대로 돌아오므로, 이 서비스가 만든
+  /// 임시 파일(compressed_/fallback_/preview_*.jpg)만 지운다. 실패는 무시한다.
+  Future<void> deleteTempFile(File file) async {
+    final name = p.basename(file.path);
+    if (!(name.startsWith('compressed_') ||
+        name.startsWith('fallback_') ||
+        name.startsWith('preview_'))) {
+      return;
+    }
+    try {
+      if (await file.exists()) await file.delete();
+    } catch (_) {
+      // 임시 파일 정리 실패는 무시
+    }
   }
 
   Future<String> imageToBase64(File file) async {
@@ -140,6 +159,11 @@ class ImageService {
       return imageToBase64(originalFile);
     }
 
-    return imageToBase64(File(result.path));
+    final previewFile = File(result.path);
+    try {
+      return await imageToBase64(previewFile);
+    } finally {
+      await deleteTempFile(previewFile);
+    }
   }
 }

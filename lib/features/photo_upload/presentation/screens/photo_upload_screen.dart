@@ -16,7 +16,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
 import '../../../analysis/domain/entities/analysis_job_progress.dart';
 import '../../../analysis/presentation/providers/analysis_provider.dart';
-import '../../../analysis/presentation/transform_provider.dart';
+import '../../../analysis/presentation/providers/transform_provider.dart';
 import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../../settings/presentation/widgets/edit_style_picker.dart';
 
@@ -30,6 +30,10 @@ class PhotoUploadScreen extends ConsumerStatefulWidget {
 class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   File? _selectedImage;
   bool _isProcessing = false;
+
+  /// 분석 시작 직전(스타일 선택 안내를 띄우고 기다리는 동안)인지.
+  /// 그 사이 '분석'을 한 번 더 누르면 분석이 두 번 시작됐다.
+  bool _starting = false;
 
   /// 재시도로 새 요청이 시작되면 이전 요청의 뒷정리가 로딩 상태를 꺼 버린다.
   /// 마지막 요청만 상태를 되돌리도록 세대 번호로 구분한다.
@@ -87,8 +91,13 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   Future<void> _startAnalysis() async {
-    if (_selectedImage == null) return;
-    await _maybePromptEditStyle();
+    if (_selectedImage == null || _starting) return;
+    setState(() => _starting = true);
+    try {
+      await _maybePromptEditStyle();
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
     if (!mounted || _selectedImage == null) return;
     final generation = ++_analysisGeneration;
     setState(() => _isProcessing = true);
@@ -200,7 +209,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                   onPressed: () => context.pop(),
                 ),
           actions: [
-            if (_selectedImage != null && !isLoading)
+            if (_selectedImage != null && !isLoading && !_starting)
               GestureDetector(
                 onTap: _startAnalysis,
                 child: Padding(
@@ -375,12 +384,13 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
     (
       icon: Icons.auto_fix_high,
       text:
-          '\uC2A4\uD0C0\uC77C\uC5D0 \uB9DE\uB294 \uBCF4\uC815\uBC95\uC744 \uCC3E\uACE0 \uC788\uC5B4\uC694',
+          // AI 분석 단계 — 보정값은 이 분석이 끝난 뒤 서버가 측정값으로 계산한다
+          '사진의 분위기를 읽고 있어요',
     ),
     (
       icon: Icons.check_circle_outline,
-      text:
-          '\uCD5C\uC885 \uACB0\uACFC\uB97C \uC815\uB9AC\uD558\uACE0 \uC788\uC5B4\uC694',
+      // 서버 렌더링 단계에서 보여 준다 (측정값으로 보정값을 계산해 적용)
+      text: '측정한 값으로 보정을 계산해 적용하고 있어요',
     ),
   ];
 
@@ -497,7 +507,7 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
       final away = DateTime.now().difference(_backgroundedAt!);
       _backgroundedAt = null;
       // 짧게 다녀온 정도로는 연결이 끊기지 않는다. 오래 비웠으면 알려 준다 —
-      // 조용히 두면 응답 대기 제한(2분)이 다 찰 때까지 멈춘 화면만 보인다.
+      // 조용히 두면 응답 대기 제한(5분 30초)이 다 찰 때까지 멈춘 화면만 보인다.
       // 서버 작업(job)으로 돌고 있으면 돌아와서 결과를 다시 받으므로 알리지 않는다.
       if (away.inSeconds >= 10 && mounted && !_isJob) {
         setState(() => _interrupted = true);
@@ -525,7 +535,7 @@ class _AnalysisWaitingViewState extends State<_AnalysisWaitingView>
 
   String? get _reassurance {
     if (_elapsed.inSeconds >= 75) return '거의 다 됐어요. 조금만 더 기다려 주세요';
-    if (_elapsed.inSeconds >= 40) return '사진이 커서 조금 더 걸리고 있어요';
+    if (_elapsed.inSeconds >= 40) return '평소보다 조금 더 걸리고 있어요';
     return null;
   }
 

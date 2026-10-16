@@ -242,41 +242,4 @@ class TransformParams {
   /// 서버 스키마(ge=0, le=1)를 벗어난 값이 422로 저장을 막지 않도록 0~1로 묶는다.
   static double _unit(Object? raw) =>
       ((raw as num?)?.toDouble() ?? 0.0).clamp(0.0, 1.0).toDouble();
-
-  Map<String, double> toMap() => {
-        'brightness': brightness,
-        'contrast': contrast,
-        'clarity': clarity,
-        'dehaze': dehaze,
-        'highlights': highlights,
-        'shadows': shadows,
-        'saturation': saturation,
-        'temperature': temperature,
-        'blemishRemoval': blemishRemoval,
-        'skinSmoothing': skinSmoothing,
-        'vignette': vignette,
-        'sharpness': sharpness,
-        'grain': grain,
-        'autoWb': autoWb,
-        'denoise': denoise,
-        'backgroundBlur': backgroundBlur,
-        'toneCurveStrength': toneCurveStrength,
-        'splitShadowStrength': splitShadowStrength,
-        'splitHighlightStrength': splitHighlightStrength,
-        'faceSlim': faceSlim,
-        'jawSharpen': jawSharpen,
-        'eyeEnlarge': eyeEnlarge,
-        'legStretch': legStretch,
-        'shoulderWidth': shoulderWidth,
-        'waistSlim': waistSlim,
-      };
-
-  /// AI 추천값과 최종 사용값의 차이(delta) 계산
-  Map<String, double> deltaFrom(TransformParams other) {
-    final thisMap = toMap();
-    final otherMap = other.toMap();
-    return {
-      for (final key in thisMap.keys) key: thisMap[key]! - otherMap[key]!,
-    };
-  }
 }

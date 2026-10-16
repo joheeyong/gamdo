@@ -10,7 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../../core/network/api_exception.dart';
-import '../../../../core/providers/auth_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../di/analysis_providers.dart';
 import '../../../../core/services/analytics_service.dart';

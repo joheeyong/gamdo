@@ -98,54 +98,6 @@ abstract class AppLocalizations {
     Locale('ko'),
   ];
 
-  /// No description provided for @appTitle.
-  ///
-  /// In ko, this message translates to:
-  /// **'감도'**
-  String get appTitle;
-
-  /// No description provided for @onboardingTitle1.
-  ///
-  /// In ko, this message translates to:
-  /// **'사진의 감각을 읽다'**
-  String get onboardingTitle1;
-
-  /// No description provided for @onboardingDesc1.
-  ///
-  /// In ko, this message translates to:
-  /// **'AI가 사진의 색감, 구도, 분위기를 분석하여\n당신만의 사진 감각을 발견해 드립니다.'**
-  String get onboardingDesc1;
-
-  /// No description provided for @onboardingTitle2.
-  ///
-  /// In ko, this message translates to:
-  /// **'맞춤 코칭 가이드'**
-  String get onboardingTitle2;
-
-  /// No description provided for @onboardingDesc2.
-  ///
-  /// In ko, this message translates to:
-  /// **'촬영 팁과 보정 가이드로\n사진 실력을 한 단계 업그레이드하세요.'**
-  String get onboardingDesc2;
-
-  /// No description provided for @onboardingTitle3.
-  ///
-  /// In ko, this message translates to:
-  /// **'나만의 스타일 기록'**
-  String get onboardingTitle3;
-
-  /// No description provided for @onboardingDesc3.
-  ///
-  /// In ko, this message translates to:
-  /// **'분석 히스토리를 통해\n사진 스타일의 변화를 추적하세요.'**
-  String get onboardingDesc3;
-
-  /// No description provided for @getStarted.
-  ///
-  /// In ko, this message translates to:
-  /// **'시작하기'**
-  String get getStarted;
-
   /// No description provided for @next.
   ///
   /// In ko, this message translates to:
@@ -176,71 +128,17 @@ abstract class AppLocalizations {
   /// **'설정'**
   String get settings;
 
-  /// No description provided for @analyze.
-  ///
-  /// In ko, this message translates to:
-  /// **'분석하기'**
-  String get analyze;
-
-  /// No description provided for @recentAnalysis.
-  ///
-  /// In ko, this message translates to:
-  /// **'최근 분석'**
-  String get recentAnalysis;
-
   /// No description provided for @noAnalysisYet.
   ///
   /// In ko, this message translates to:
   /// **'아직 분석한 사진이 없습니다'**
   String get noAnalysisYet;
 
-  /// No description provided for @startFirstAnalysis.
-  ///
-  /// In ko, this message translates to:
-  /// **'첫 번째 사진을 분석해 보세요!'**
-  String get startFirstAnalysis;
-
-  /// No description provided for @selectPhoto.
-  ///
-  /// In ko, this message translates to:
-  /// **'사진 선택'**
-  String get selectPhoto;
-
-  /// No description provided for @fromGallery.
-  ///
-  /// In ko, this message translates to:
-  /// **'갤러리에서 선택'**
-  String get fromGallery;
-
-  /// No description provided for @fromCamera.
-  ///
-  /// In ko, this message translates to:
-  /// **'카메라로 촬영'**
-  String get fromCamera;
-
-  /// No description provided for @startAnalysis.
-  ///
-  /// In ko, this message translates to:
-  /// **'분석 시작'**
-  String get startAnalysis;
-
   /// No description provided for @analyzing.
   ///
   /// In ko, this message translates to:
   /// **'분석 중...'**
   String get analyzing;
-
-  /// No description provided for @analyzingDesc.
-  ///
-  /// In ko, this message translates to:
-  /// **'AI가 사진을 분석하고 있습니다'**
-  String get analyzingDesc;
-
-  /// No description provided for @analysisComplete.
-  ///
-  /// In ko, this message translates to:
-  /// **'분석 완료'**
-  String get analysisComplete;
 
   /// No description provided for @colorAnalysis.
   ///
@@ -284,29 +182,11 @@ abstract class AppLocalizations {
   /// **'구도 분석'**
   String get compositionAnalysis;
 
-  /// No description provided for @compositionTechnique.
-  ///
-  /// In ko, this message translates to:
-  /// **'구도 기법'**
-  String get compositionTechnique;
-
   /// No description provided for @balance.
   ///
   /// In ko, this message translates to:
   /// **'균형'**
   String get balance;
-
-  /// No description provided for @strengths.
-  ///
-  /// In ko, this message translates to:
-  /// **'장점'**
-  String get strengths;
-
-  /// No description provided for @improvements.
-  ///
-  /// In ko, this message translates to:
-  /// **'개선점'**
-  String get improvements;
 
   /// No description provided for @toneReport.
   ///
@@ -326,65 +206,11 @@ abstract class AppLocalizations {
   /// **'스타일 카테고리'**
   String get styleCategory;
 
-  /// No description provided for @shootingTips.
-  ///
-  /// In ko, this message translates to:
-  /// **'촬영 팁'**
-  String get shootingTips;
-
-  /// No description provided for @editingTips.
-  ///
-  /// In ko, this message translates to:
-  /// **'보정 팁'**
-  String get editingTips;
-
-  /// No description provided for @overallScore.
-  ///
-  /// In ko, this message translates to:
-  /// **'종합 점수'**
-  String get overallScore;
-
-  /// No description provided for @warm.
-  ///
-  /// In ko, this message translates to:
-  /// **'따뜻한'**
-  String get warm;
-
-  /// No description provided for @cool.
-  ///
-  /// In ko, this message translates to:
-  /// **'차가운'**
-  String get cool;
-
-  /// No description provided for @neutral.
-  ///
-  /// In ko, this message translates to:
-  /// **'중성'**
-  String get neutral;
-
   /// No description provided for @darkMode.
   ///
   /// In ko, this message translates to:
   /// **'다크 모드'**
   String get darkMode;
-
-  /// No description provided for @apiSettings.
-  ///
-  /// In ko, this message translates to:
-  /// **'API 설정'**
-  String get apiSettings;
-
-  /// No description provided for @proxyUrl.
-  ///
-  /// In ko, this message translates to:
-  /// **'프록시 서버 URL'**
-  String get proxyUrl;
-
-  /// No description provided for @appToken.
-  ///
-  /// In ko, this message translates to:
-  /// **'앱 토큰'**
-  String get appToken;
 
   /// No description provided for @save.
   ///
@@ -404,41 +230,17 @@ abstract class AppLocalizations {
   /// **'오류'**
   String get error;
 
-  /// No description provided for @retry.
-  ///
-  /// In ko, this message translates to:
-  /// **'다시 시도'**
-  String get retry;
-
   /// No description provided for @errorAnalysisFailed.
   ///
   /// In ko, this message translates to:
   /// **'분석에 실패했습니다. 다시 시도해 주세요.'**
   String get errorAnalysisFailed;
 
-  /// No description provided for @errorNetworkFailed.
-  ///
-  /// In ko, this message translates to:
-  /// **'네트워크 연결을 확인해 주세요.'**
-  String get errorNetworkFailed;
-
-  /// No description provided for @errorImageTooLarge.
-  ///
-  /// In ko, this message translates to:
-  /// **'이미지 크기가 너무 큽니다.'**
-  String get errorImageTooLarge;
-
   /// No description provided for @allStyles.
   ///
   /// In ko, this message translates to:
   /// **'전체'**
   String get allStyles;
-
-  /// No description provided for @filterByStyle.
-  ///
-  /// In ko, this message translates to:
-  /// **'스타일 필터'**
-  String get filterByStyle;
 
   /// No description provided for @deleteAnalysis.
   ///
@@ -457,12 +259,6 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'삭제'**
   String get delete;
-
-  /// No description provided for @points.
-  ///
-  /// In ko, this message translates to:
-  /// **'{score}점'**
-  String points(int score);
 }
 
 class _AppLocalizationsDelegate

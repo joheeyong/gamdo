@@ -62,8 +62,11 @@ abstract class AnalysisRepository {
   /// 다시 복사하지 않고, 썸네일만 새로 만들어 바꾼다 (다시 분석/재시도,
   /// transformJson이 없는 옛 기록 열기). 그 기록이 사라졌으면 새로 만든다.
   /// [onProgress]는 서버 작업의 단계(대기/분석/렌더링)와 경과 시간을 받는다.
+  /// [processedImage]는 호출부가 이미 압축한 결과 — 있으면 다시 압축하지 않고
+  /// 쓴다 (그 임시 파일은 호출부가 정리한다).
   Future<AnalyzeRecordResult> analyzeAndTransformRecord({
     required File imageFile,
+    ({File file, String base64})? processedImage,
     Map<String, dynamic>? styleProfile,
     String userId,
     bool reshapeEnabled,

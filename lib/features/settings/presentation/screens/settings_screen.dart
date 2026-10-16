@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/extensions/context_extensions.dart';
-import '../../../../core/providers/auth_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/services/database.dart';
 import '../providers/theme_provider.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -10,7 +10,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
 import '../../../../core/widgets/instagram_widgets.dart';
 import '../../../analysis/di/analysis_providers.dart';
-import '../../../analysis/presentation/analysis_provider.dart';
+import '../../../analysis/presentation/providers/analysis_provider.dart';
 import '../../../history/presentation/providers/history_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/edit_style_picker.dart';
@@ -727,7 +727,6 @@ class _StyleProfileEditScreenState extends State<_StyleProfileEditScreen> {
       final profile = <String, dynamic>{
         'primaryStyle': _primaryStyle,
         'trendCategory': _trendCategory,
-        'secondaryStyles': <String>[], // 자동 분석 시 채워짐
         'moodKeywords': _splitTags(_moodKeywordsController.text),
         'colorPreference': {
           'preferredTones': _preferredTones,
@@ -747,8 +746,8 @@ class _StyleProfileEditScreenState extends State<_StyleProfileEditScreen> {
         },
       };
 
-      // 기존 targetParams, feedCohesion 등 보존
-      final preserve = ['targetParams', 'feedCohesion', 'dominantColors'];
+      // 편집 화면에 없는, 자동 분석이 채운 값은 보존한다
+      const preserve = ['feedCohesion'];
       for (final key in preserve) {
         if (widget.existing?[key] != null) {
           profile[key] = widget.existing![key];
@@ -1056,6 +1055,7 @@ class _InstagramRow extends ConsumerWidget {
     final auth = ref.watch(instagramAuthProvider);
 
     if (auth.isConnected) {
+      final pipeline = ref.watch(styleAnalysisPipelineProvider);
       return Column(
         children: [
           InstaSettingRow(
@@ -1077,6 +1077,30 @@ class _InstagramRow extends ConsumerWidget {
                 ),
               ),
             ),
+          ),
+          const InstaHairline(indent: 16),
+          // 연결을 끊지 않고 피드 스타일 분석만 다시 돌린다.
+          InstaSettingRow(
+            icon: Icons.refresh_rounded,
+            title: '스타일 다시 분석',
+            subtitle: pipeline.isRunning
+                ? pipeline.statusMessage
+                : '최근 게시물로 스타일 프로필을 새로 만들어요',
+            trailing: pipeline.isRunning
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(Icons.chevron_right, color: context.instaSecondary),
+            onTap: pipeline.isRunning
+                ? null
+                : () {
+                    ref
+                        .read(styleAnalysisPipelineProvider.notifier)
+                        .reanalyzeConnectedAccount();
+                    showInstaToast(context, '스타일 분석을 시작했어요');
+                  },
           ),
           const InstaHairline(indent: 16),
           InstaSettingRow(

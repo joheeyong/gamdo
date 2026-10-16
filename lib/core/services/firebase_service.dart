@@ -18,9 +18,8 @@ class FirebaseService {
 
   /// RTDB에 스타일 프로필 저장.
   ///
-  /// `users/$userId`를 통째로 set()하면 같은 노드 아래의 `feedback/`
-  /// 히스토리까지 지워진다. 프로필 필드만 update()로 덮어쓴다.
-  /// styleProfile도 필드 단위로 써서 학습된 targetParams를 보존한다.
+  /// `users/$userId`를 통째로 set()하지 않고 프로필 필드만 update()로
+  /// 덮어쓴다 — 같은 노드 아래의 다른 자식을 지우지 않기 위해서다.
   Future<void> saveStyleProfile({
     required String userId,
     required Map<String, dynamic> styleProfile,
@@ -74,100 +73,16 @@ class FirebaseService {
       rethrow;
     }
   }
-
-  /// 사용자 피드백(슬라이더 delta)을 RTDB에 저장.
-  Future<void> saveFeedback({
-    required String userId,
-    required Map<String, double> delta,
-  }) async {
-    try {
-      final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-      await _db.child('users/$userId/feedback/$timestamp').set(delta);
-      developer.log('Feedback saved for user $userId', name: 'FirebaseService');
-    } catch (e) {
-      developer.log('Failed to save feedback: $e', name: 'FirebaseService');
-    }
-  }
-
-  /// 사용자의 누적 피드백 히스토리를 로드.
-  Future<List<Map<String, double>>> loadFeedbackHistory(String userId) async {
-    try {
-      final snapshot = await _db.child('users/$userId/feedback').get();
-      if (!snapshot.exists || snapshot.value == null) return [];
-
-      final data = Map<String, dynamic>.from(snapshot.value as Map);
-      final history = <Map<String, double>>[];
-
-      for (final entry in data.values) {
-        if (entry is Map) {
-          final delta = <String, double>{};
-          for (final e in Map<String, dynamic>.from(entry).entries) {
-            delta[e.key] = (e.value as num).toDouble();
-          }
-          history.add(delta);
-        }
-      }
-
-      developer.log(
-          'Loaded ${history.length} feedback entries for user $userId',
-          name: 'FirebaseService');
-      return history;
-    } catch (e) {
-      developer.log('Failed to load feedback history: $e',
-          name: 'FirebaseService');
-      return [];
-    }
-  }
-
-  /// 누적 피드백 평균으로 targetParams를 업데이트.
-  /// new_target[key] = old_target[key] + learningRate * avg_delta[key]
-  Future<void> updateTargetParams({
-    required String userId,
-    required Map<String, double> avgDelta,
-    double learningRate = 0.3,
-  }) async {
-    try {
-      // 기존 targetParams 읽기
-      final snapshot =
-          await _db.child('users/$userId/styleProfile/targetParams').get();
-      final oldParams = <String, double>{};
-      if (snapshot.exists && snapshot.value != null) {
-        final data = Map<String, dynamic>.from(snapshot.value as Map);
-        for (final e in data.entries) {
-          oldParams[e.key] = (e.value as num).toDouble();
-        }
-      }
-
-      // 새 targetParams 계산
-      final newParams = <String, double>{};
-      final allKeys = {...oldParams.keys, ...avgDelta.keys};
-      for (final key in allKeys) {
-        final oldVal = oldParams[key] ?? 0.0;
-        final deltaVal = avgDelta[key] ?? 0.0;
-        newParams[key] = (oldVal + learningRate * deltaVal).clamp(-1.0, 1.0);
-      }
-
-      await _db
-          .child('users/$userId/styleProfile/targetParams')
-          .set(newParams);
-      developer.log('targetParams updated for user $userId: $newParams',
-          name: 'FirebaseService');
-    } catch (e) {
-      developer.log('Failed to update targetParams: $e',
-          name: 'FirebaseService');
-    }
-  }
 }
 
 /// [FirebaseService.saveStyleProfile]이 `users/$userId`에 update()할 맵.
 ///
-/// styleProfile은 통째로 덮지 않고 `styleProfile/<필드>` 다중 경로로 쓴다.
-/// 슬라이더 피드백으로 학습된 `styleProfile/targetParams`는 재분석 결과에
-/// 없으므로 그대로 남는다(넘어온 프로필에 targetParams가 있으면 그 값으로 쓴다).
+/// styleProfile은 통째로 덮지 않고 `styleProfile/<필드>` 다중 경로로 쓴다
+/// (넘어온 프로필에 없는 필드는 건드리지 않는다).
 ///
 /// summary/recommendations는 자동 분석 결과에 딸린 값이다. 프로필을 수동
 /// 편집해 저장할 때(null로 넘어옴) 옛 분석의 요약이 남지 않도록 null을 써서
-/// 지운다 — 예전 set() 동작과 같다. `feedback/` 등 나머지 자식은 건드리지 않는다.
+/// 지운다 — 예전 set() 동작과 같다. 그 밖의 자식 노드는 건드리지 않는다.
 Map<String, Object?> buildStyleProfileUpdate({
   required Map<String, dynamic> styleProfile,
   String? summary,
@@ -181,17 +96,6 @@ Map<String, Object?> buildStyleProfileUpdate({
     'summary': summary,
     'recommendations': recommendations,
   };
-}
-
-/// 재분석으로 받은 새 프로필에 기존(인메모리) 프로필의 학습된 targetParams를
-/// 이어 붙인다. 새 프로필에 targetParams가 있으면 새 값을 쓴다.
-Map<String, dynamic> mergeLearnedTargetParams(
-  Map<String, dynamic> fresh,
-  Map<String, dynamic>? previous,
-) {
-  final learned = previous?['targetParams'];
-  if (learned == null || fresh['targetParams'] != null) return fresh;
-  return {...fresh, 'targetParams': learned};
 }
 
 /// RTDB가 돌려주는 `Map<Object?, Object?>`/`List<Object?>` 트리를

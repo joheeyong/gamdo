@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gamdo/core/network/api_exception.dart';
-import 'package:gamdo/features/analysis/data/claude_datasource.dart';
+import 'package:gamdo/features/analysis/data/datasources/gamdo_agent_datasource.dart';
 import 'package:gamdo/features/analysis/domain/entities/analysis_job_progress.dart';
 import 'package:gamdo/features/settings/domain/entities/edit_style.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -289,14 +289,6 @@ void main() {
     );
     expect(server.startRequests.single.data['skin_retouch_enabled'], isFalse);
 
-    // startAnalyzeJob도 같은 본문을 만든다
-    await ds.startAnalyzeJob(
-      imageBase64: 'B64',
-      styleProfile: const {},
-      skinRetouchEnabled: false,
-    );
-    expect(server.startRequests.last.data['skin_retouch_enabled'], isFalse);
-
     // 구버전 서버(작업 API 404) → 동기 엔드포인트에도 그대로 실린다
     server = _FakeServer();
     server.starts.add((_) => _Reply.status(404, {'detail': 'Not Found'}));
@@ -376,7 +368,10 @@ void main() {
 
     await expectLater(
       analyze(datasource()),
-      throwsA(isA<ApiException>().having((e) => e.message, 'message', msg)),
+      throwsA(isA<ApiException>()
+          .having((e) => e.message, 'message', msg)
+          // 일반 문구('오류가 발생했습니다')가 아니라 서버 문장을 그대로 보여 준다
+          .having((e) => e.userMessage, 'userMessage', msg)),
     );
     expect(server.pollRequests, hasLength(2));
   });

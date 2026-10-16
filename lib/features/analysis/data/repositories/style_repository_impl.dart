@@ -29,27 +29,4 @@ class StyleRepositoryImpl implements StyleRepository {
   @override
   Future<void> deleteStyleProfile(String userId) =>
       _datasource.deleteStyleProfile(userId);
-
-  @override
-  Future<void> saveFeedback({
-    required String userId,
-    required Map<String, double> delta,
-  }) =>
-      _datasource.saveFeedback(userId: userId, delta: delta);
-
-  @override
-  Future<List<Map<String, double>>> loadFeedbackHistory(String userId) =>
-      _datasource.loadFeedbackHistory(userId);
-
-  @override
-  Future<void> updateTargetParams({
-    required String userId,
-    required Map<String, double> avgDelta,
-    double learningRate = 0.3,
-  }) =>
-      _datasource.updateTargetParams(
-        userId: userId,
-        avgDelta: avgDelta,
-        learningRate: learningRate,
-      );
 }

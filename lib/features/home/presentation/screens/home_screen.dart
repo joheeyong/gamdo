@@ -8,13 +8,13 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/extensions/color_extensions.dart';
 
 import '../../../../core/network/api_exception.dart';
-import '../../../../core/providers/auth_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/services/database.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/insta_ui.dart';
-import '../../../analysis/presentation/analysis_provider.dart';
+import '../../../analysis/presentation/providers/analysis_provider.dart';
 import '../providers/home_provider.dart';
 
 /// 홈 — 벤토 그리드.
@@ -659,6 +659,10 @@ class _AnalysisBannerState extends ConsumerState<_AnalysisBanner> {
   @override
   void didUpdateWidget(covariant _AnalysisBanner oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // 닫아 둔 배너라도 새 분석('다시 분석' 등)이 시작되면 다시 보여 준다.
+    if (widget.state.isRunning && !oldWidget.state.isRunning) {
+      _dismissed = false;
+    }
     if (widget.state.status == StyleAnalysisStatus.completed &&
         oldWidget.state.status != StyleAnalysisStatus.completed) {
       _dismissed = false;
@@ -683,6 +687,9 @@ class _AnalysisBannerState extends ConsumerState<_AnalysisBanner> {
     final isError = widget.state.status == StyleAnalysisStatus.error;
     final isCompleted = widget.state.status == StyleAnalysisStatus.completed;
     final isInProgress = !isError && !isCompleted;
+    // 연결된 계정이 있으면 실패한 스타일 분석을 연결 해제 없이 다시 돌린다.
+    final canRetry = isError &&
+        ref.watch(instagramAuthProvider.select((a) => a.isConnected));
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -727,6 +734,17 @@ class _AnalysisBannerState extends ConsumerState<_AnalysisBanner> {
               ),
             ),
           ),
+          if (canRetry)
+            TextButton(
+              onPressed: () => ref
+                  .read(styleAnalysisPipelineProvider.notifier)
+                  .reanalyzeConnectedAccount(),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              child: const Text('다시 분석'),
+            ),
           if (isError || isCompleted)
             GestureDetector(
               onTap: () {

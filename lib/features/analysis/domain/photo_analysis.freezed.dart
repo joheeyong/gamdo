@@ -15,7 +15,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PhotoAnalysisResponse {
 
- ColorAnalysis get colorAnalysis; CompositionAnalysis get compositionAnalysis; ToneReport get toneReport; List<String> get hashtags;
+ ColorAnalysis get colorAnalysis; CompositionAnalysis get compositionAnalysis; ToneReport get toneReport;/// 서버가 AI 응답의 일부 필드를 채우지 못해 기본값으로 메웠을 때의 설명.
+/// 비어 있지 않으면 분석 화면 일부가 비어 있을 수 있다는 뜻이다
+/// (사진 보정은 서버가 측정으로 계산하므로 영향이 없다).
+ List<String> get warnings;
 /// Create a copy of PhotoAnalysisResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +31,16 @@ $PhotoAnalysisResponseCopyWith<PhotoAnalysisResponse> get copyWith => _$PhotoAna
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhotoAnalysisResponse&&(identical(other.colorAnalysis, colorAnalysis) || other.colorAnalysis == colorAnalysis)&&(identical(other.compositionAnalysis, compositionAnalysis) || other.compositionAnalysis == compositionAnalysis)&&(identical(other.toneReport, toneReport) || other.toneReport == toneReport)&&const DeepCollectionEquality().equals(other.hashtags, hashtags));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhotoAnalysisResponse&&(identical(other.colorAnalysis, colorAnalysis) || other.colorAnalysis == colorAnalysis)&&(identical(other.compositionAnalysis, compositionAnalysis) || other.compositionAnalysis == compositionAnalysis)&&(identical(other.toneReport, toneReport) || other.toneReport == toneReport)&&const DeepCollectionEquality().equals(other.warnings, warnings));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,colorAnalysis,compositionAnalysis,toneReport,const DeepCollectionEquality().hash(hashtags));
+int get hashCode => Object.hash(runtimeType,colorAnalysis,compositionAnalysis,toneReport,const DeepCollectionEquality().hash(warnings));
 
 @override
 String toString() {
-  return 'PhotoAnalysisResponse(colorAnalysis: $colorAnalysis, compositionAnalysis: $compositionAnalysis, toneReport: $toneReport, hashtags: $hashtags)';
+  return 'PhotoAnalysisResponse(colorAnalysis: $colorAnalysis, compositionAnalysis: $compositionAnalysis, toneReport: $toneReport, warnings: $warnings)';
 }
 
 
@@ -48,7 +51,7 @@ abstract mixin class $PhotoAnalysisResponseCopyWith<$Res>  {
   factory $PhotoAnalysisResponseCopyWith(PhotoAnalysisResponse value, $Res Function(PhotoAnalysisResponse) _then) = _$PhotoAnalysisResponseCopyWithImpl;
 @useResult
 $Res call({
- ColorAnalysis colorAnalysis, CompositionAnalysis compositionAnalysis, ToneReport toneReport, List<String> hashtags
+ ColorAnalysis colorAnalysis, CompositionAnalysis compositionAnalysis, ToneReport toneReport, List<String> warnings
 });
 
 
@@ -65,12 +68,12 @@ class _$PhotoAnalysisResponseCopyWithImpl<$Res>
 
 /// Create a copy of PhotoAnalysisResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? colorAnalysis = null,Object? compositionAnalysis = null,Object? toneReport = null,Object? hashtags = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? colorAnalysis = null,Object? compositionAnalysis = null,Object? toneReport = null,Object? warnings = null,}) {
   return _then(_self.copyWith(
 colorAnalysis: null == colorAnalysis ? _self.colorAnalysis : colorAnalysis // ignore: cast_nullable_to_non_nullable
 as ColorAnalysis,compositionAnalysis: null == compositionAnalysis ? _self.compositionAnalysis : compositionAnalysis // ignore: cast_nullable_to_non_nullable
 as CompositionAnalysis,toneReport: null == toneReport ? _self.toneReport : toneReport // ignore: cast_nullable_to_non_nullable
-as ToneReport,hashtags: null == hashtags ? _self.hashtags : hashtags // ignore: cast_nullable_to_non_nullable
+as ToneReport,warnings: null == warnings ? _self.warnings : warnings // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
 }
@@ -180,10 +183,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> hashtags)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> warnings)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PhotoAnalysisResponse() when $default != null:
-return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.hashtags);case _:
+return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.warnings);case _:
   return orElse();
 
 }
@@ -201,10 +204,10 @@ return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> hashtags)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> warnings)  $default,) {final _that = this;
 switch (_that) {
 case _PhotoAnalysisResponse():
-return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.hashtags);}
+return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.warnings);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -218,10 +221,10 @@ return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> hashtags)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( ColorAnalysis colorAnalysis,  CompositionAnalysis compositionAnalysis,  ToneReport toneReport,  List<String> warnings)?  $default,) {final _that = this;
 switch (_that) {
 case _PhotoAnalysisResponse() when $default != null:
-return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.hashtags);case _:
+return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_that.warnings);case _:
   return null;
 
 }
@@ -233,17 +236,23 @@ return $default(_that.colorAnalysis,_that.compositionAnalysis,_that.toneReport,_
 @JsonSerializable()
 
 class _PhotoAnalysisResponse implements PhotoAnalysisResponse {
-  const _PhotoAnalysisResponse({required this.colorAnalysis, required this.compositionAnalysis, required this.toneReport, final  List<String> hashtags = const []}): _hashtags = hashtags;
+  const _PhotoAnalysisResponse({required this.colorAnalysis, required this.compositionAnalysis, required this.toneReport, final  List<String> warnings = const <String>[]}): _warnings = warnings;
   factory _PhotoAnalysisResponse.fromJson(Map<String, dynamic> json) => _$PhotoAnalysisResponseFromJson(json);
 
 @override final  ColorAnalysis colorAnalysis;
 @override final  CompositionAnalysis compositionAnalysis;
 @override final  ToneReport toneReport;
- final  List<String> _hashtags;
-@override@JsonKey() List<String> get hashtags {
-  if (_hashtags is EqualUnmodifiableListView) return _hashtags;
+/// 서버가 AI 응답의 일부 필드를 채우지 못해 기본값으로 메웠을 때의 설명.
+/// 비어 있지 않으면 분석 화면 일부가 비어 있을 수 있다는 뜻이다
+/// (사진 보정은 서버가 측정으로 계산하므로 영향이 없다).
+ final  List<String> _warnings;
+/// 서버가 AI 응답의 일부 필드를 채우지 못해 기본값으로 메웠을 때의 설명.
+/// 비어 있지 않으면 분석 화면 일부가 비어 있을 수 있다는 뜻이다
+/// (사진 보정은 서버가 측정으로 계산하므로 영향이 없다).
+@override@JsonKey() List<String> get warnings {
+  if (_warnings is EqualUnmodifiableListView) return _warnings;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_hashtags);
+  return EqualUnmodifiableListView(_warnings);
 }
 
 
@@ -260,16 +269,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhotoAnalysisResponse&&(identical(other.colorAnalysis, colorAnalysis) || other.colorAnalysis == colorAnalysis)&&(identical(other.compositionAnalysis, compositionAnalysis) || other.compositionAnalysis == compositionAnalysis)&&(identical(other.toneReport, toneReport) || other.toneReport == toneReport)&&const DeepCollectionEquality().equals(other._hashtags, _hashtags));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhotoAnalysisResponse&&(identical(other.colorAnalysis, colorAnalysis) || other.colorAnalysis == colorAnalysis)&&(identical(other.compositionAnalysis, compositionAnalysis) || other.compositionAnalysis == compositionAnalysis)&&(identical(other.toneReport, toneReport) || other.toneReport == toneReport)&&const DeepCollectionEquality().equals(other._warnings, _warnings));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,colorAnalysis,compositionAnalysis,toneReport,const DeepCollectionEquality().hash(_hashtags));
+int get hashCode => Object.hash(runtimeType,colorAnalysis,compositionAnalysis,toneReport,const DeepCollectionEquality().hash(_warnings));
 
 @override
 String toString() {
-  return 'PhotoAnalysisResponse(colorAnalysis: $colorAnalysis, compositionAnalysis: $compositionAnalysis, toneReport: $toneReport, hashtags: $hashtags)';
+  return 'PhotoAnalysisResponse(colorAnalysis: $colorAnalysis, compositionAnalysis: $compositionAnalysis, toneReport: $toneReport, warnings: $warnings)';
 }
 
 
@@ -280,7 +289,7 @@ abstract mixin class _$PhotoAnalysisResponseCopyWith<$Res> implements $PhotoAnal
   factory _$PhotoAnalysisResponseCopyWith(_PhotoAnalysisResponse value, $Res Function(_PhotoAnalysisResponse) _then) = __$PhotoAnalysisResponseCopyWithImpl;
 @override @useResult
 $Res call({
- ColorAnalysis colorAnalysis, CompositionAnalysis compositionAnalysis, ToneReport toneReport, List<String> hashtags
+ ColorAnalysis colorAnalysis, CompositionAnalysis compositionAnalysis, ToneReport toneReport, List<String> warnings
 });
 
 
@@ -297,12 +306,12 @@ class __$PhotoAnalysisResponseCopyWithImpl<$Res>
 
 /// Create a copy of PhotoAnalysisResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? colorAnalysis = null,Object? compositionAnalysis = null,Object? toneReport = null,Object? hashtags = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? colorAnalysis = null,Object? compositionAnalysis = null,Object? toneReport = null,Object? warnings = null,}) {
   return _then(_PhotoAnalysisResponse(
 colorAnalysis: null == colorAnalysis ? _self.colorAnalysis : colorAnalysis // ignore: cast_nullable_to_non_nullable
 as ColorAnalysis,compositionAnalysis: null == compositionAnalysis ? _self.compositionAnalysis : compositionAnalysis // ignore: cast_nullable_to_non_nullable
 as CompositionAnalysis,toneReport: null == toneReport ? _self.toneReport : toneReport // ignore: cast_nullable_to_non_nullable
-as ToneReport,hashtags: null == hashtags ? _self._hashtags : hashtags // ignore: cast_nullable_to_non_nullable
+as ToneReport,warnings: null == warnings ? _self._warnings : warnings // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
 }

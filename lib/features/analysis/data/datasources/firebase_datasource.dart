@@ -27,24 +27,4 @@ class FirebaseDatasource {
 
   Future<void> deleteStyleProfile(String userId) =>
       _firebaseService.deleteStyleProfile(userId);
-
-  Future<void> saveFeedback({
-    required String userId,
-    required Map<String, double> delta,
-  }) =>
-      _firebaseService.saveFeedback(userId: userId, delta: delta);
-
-  Future<List<Map<String, double>>> loadFeedbackHistory(String userId) =>
-      _firebaseService.loadFeedbackHistory(userId);
-
-  Future<void> updateTargetParams({
-    required String userId,
-    required Map<String, double> avgDelta,
-    double learningRate = 0.3,
-  }) =>
-      _firebaseService.updateTargetParams(
-        userId: userId,
-        avgDelta: avgDelta,
-        learningRate: learningRate,
-      );
 }
